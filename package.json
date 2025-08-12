@@ -1,0 +1,39 @@
+{
+  "name": "ai-pronunciation-coach",
+  "version": "1.0.0",
+  "description": "AI-powered English pronunciation coach with gamified learning experience",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "lucide-react": "^0.294.0",
+    "framer-motion": "^10.16.5",
+    "@google/generative-ai": "^0.1.3"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.37",
+    "@types/react-dom": "^18.2.15",
+    "@vitejs/plugin-react": "^4.1.1",
+    "eslint": "^8.53.0",
+    "eslint-plugin-react": "^7.33.2",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "eslint-plugin-react-refresh": "^0.4.4",
+    "vite": "^5.0.0"
+  },
+  "keywords": [
+    "ai",
+    "pronunciation",
+    "english",
+    "learning",
+    "speech",
+    "education"
+  ],
+  "author": "AI Pronunciation Coach Team",
+  "license": "MIT"
+}
