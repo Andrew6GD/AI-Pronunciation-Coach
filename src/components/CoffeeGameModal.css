@@ -1,6 +1,6 @@
 /* 咖啡弹窗模态框样式 */
 .coffee-modal {
-  width: min(88vw, 520px);
+  width: min(88vw, 480px);
   padding: 20px;
   border-radius: 16px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
@@ -265,7 +265,7 @@
 }
 
 /* 二维码占位符 */
-.qr-placeholder {
+.coffee-modal .qr-placeholder {
   margin: 1rem 0;
   padding: 1rem;
   background: rgba(248, 249, 250, 0.8);
@@ -273,19 +273,19 @@
   border-radius: 16px;
   text-align: center;
   min-height: 200px;
-  display: flex;
+  display: flex !important;
+  flex-direction: row !important;
+  gap: 20px;
   justify-content: center;
   align-items: center;
-  gap: 24px;        /* 两张图的间距 */
-  flex-wrap: nowrap;/* 关键：默认不换行，保证水平排 */
-  text-align: center;
+  flex-wrap: wrap;
+  width: auto !important;
+  height: auto !important;
 }
 
 .qr-img {
-  width: 146px;      /* 固定盒子大小，统一对齐 */
-  height: 146px;
-  object-fit: contain; /* 保持比例地塞进盒子 */
-  display: block;
+  max-width: 138px;
+  max-height: 138px;
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
@@ -327,6 +327,12 @@
     font-size: 14px;
   }
   
+  .coffee-modal .qr-placeholder {
+    flex-direction: row !important;
+    gap: 15px;
+    flex-wrap: wrap;
+  }
+  
   .qr-img {
     max-width: 100px;
     max-height: 100px;
@@ -354,10 +360,10 @@
     height: 25px;
   }
   
-  .qr-placeholder {
-  flex-direction: row;
-  gap: 15px;
-  flex-wrap: wrap;
+  .coffee-modal .qr-placeholder {
+    flex-direction: row !important;
+    gap: 15px;
+    flex-wrap: wrap;
   }
   
   .qr-img {
