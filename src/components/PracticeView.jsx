@@ -6,7 +6,9 @@ import {
   Gauge, Award, Volume2, Zap
 } from 'lucide-react'
 import { ttsService, speechRecognitionService, SpeechScoringService } from '../services/speechService'
+import azureTtsService from '../services/azureTtsService'
 import ParticleEffect from './ParticleEffect'
+import { VOICE_CONFIG, getVoiceId, getVoiceName, isValidVoiceCombination, DEFAULT_VOICE } from '../config/voiceConfig'
 import './PracticeView.css'
 
 const PracticeView = ({ analysisData, originalText, onBack, onReanalyze, currentAccent }) => {
@@ -16,23 +18,25 @@ const PracticeView = ({ analysisData, originalText, onBack, onReanalyze, current
   const [isRecording, setIsRecording] = useState(false)
   const [playbackSpeed, setPlaybackSpeed] = useState('normal') // 'slow' | 'normal' | 'fast'
   const [showPhonetics, setShowPhonetics] = useState(false)
-  const [showStructure, setShowStructure] = useState(false)
-  const [showThoughtGroups, setShowThoughtGroups] = useState(false)
-  const [showThoughtGroupsHint, setShowThoughtGroupsHint] = useState(false)
-  const [expandedStructure, setExpandedStructure] = useState({})
+  const [showScore, setShowScore] = useState(true)
+
   const [selectedAccent, setSelectedAccent] = useState(currentAccent || 'us') // 'us' | 'uk'
+  const [selectedGender, setSelectedGender] = useState('male') // 'male' | 'female'
+  const [showAccentDropdown, setShowAccentDropdown] = useState(false)
   const [recognizedWords, setRecognizedWords] = useState([])
   const [scoreData, setScoreData] = useState(null)
   const [particles, setParticles] = useState([])
   const [highlightedWords, setHighlightedWords] = useState(new Set())
   const [recordedAudio, setRecordedAudio] = useState(null)
   const [isPlayingRecording, setIsPlayingRecording] = useState(false)
+  const [showFallbackMessage, setShowFallbackMessage] = useState(false)
   
   const practiceRef = useRef(null)
   const particleIdRef = useRef(0)
   const mediaRecorderRef = useRef(null)
   const audioChunksRef = useRef([])
   const currentAudioRef = useRef(null)
+  const scoreDisplayRef = useRef(null)
 
   // 初始化语音识别
   useEffect(() => {
@@ -43,6 +47,24 @@ const PracticeView = ({ analysisData, originalText, onBack, onReanalyze, current
       onStart: handleSpeechStart
     })
   }, [practiceMode, currentSentenceIndex])
+
+  // 组件卸载时清理缓存
+  useEffect(() => {
+    return () => {
+      // 清理Azure TTS缓存
+      if (azureTtsService.isAvailable()) {
+        azureTtsService.clearCache()
+      }
+    }
+  }, [])
+
+  // 当原始文本改变时清理缓存（内容更换）
+  useEffect(() => {
+    if (azureTtsService.isAvailable()) {
+      azureTtsService.clearCache()
+      console.log('内容更换，已清理Azure TTS缓存')
+    }
+  }, [originalText])
 
   // 语音识别结果处理
   const handleSpeechResult = useCallback((result) => {
@@ -109,6 +131,13 @@ const PracticeView = ({ analysisData, originalText, onBack, onReanalyze, current
     const score = SpeechScoringService.calculateAccuracy(targetText, finalTranscript)
     setScoreData(score)
     
+    // 自动滚动到评分模块
+    setTimeout(() => {
+      if (scoreDisplayRef.current) {
+        scoreDisplayRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      }
+    }, 100)
+    
     // 重置高亮
     setTimeout(() => {
       setHighlightedWords(new Set())
@@ -150,18 +179,32 @@ const PracticeView = ({ analysisData, originalText, onBack, onReanalyze, current
   // 播放音频
   const handlePlay = async () => {
     if (isPlaying) {
-      ttsService.stop()
+      // 停止Azure TTS或Web Speech API
+      if (azureTtsService.isAvailable()) {
+        azureTtsService.stop()
+      } else {
+        ttsService.stop()
+      }
       setIsPlaying(false)
       return
     }
 
-    // 如果正在录音，先停止录音
+    // 如果正在录音，先停止录音（但不触发评分）
     if (isRecording) {
+      // 临时移除onEnd监听器，避免触发评分
+      const originalOnEnd = speechRecognitionService.onEnd
+      speechRecognitionService.onEnd = null
+      
       speechRecognitionService.stopRecording()
       if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
         mediaRecorderRef.current.stop()
       }
       setIsRecording(false)
+      
+      // 恢复onEnd监听器
+      setTimeout(() => {
+        speechRecognitionService.onEnd = originalOnEnd
+      }, 100)
     }
 
     // 如果正在播放录音，先停止录音回放
@@ -179,18 +222,64 @@ const PracticeView = ({ analysisData, originalText, onBack, onReanalyze, current
     setIsPlaying(true)
     
     try {
-      switch (playbackSpeed) {
-        case 'slow':
-          await ttsService.speakSlowly(textToSpeak)
-          break
-        case 'fast':
-          await ttsService.speakFast(textToSpeak)
-          break
-        default:
-          await ttsService.speakNormally(textToSpeak)
+      // 优先使用Azure TTS，Web Speech API作为兜底
+      if (azureTtsService.isAvailable()) {
+        // 根据播放速度调整语速
+        let rate = 1.0
+        switch (playbackSpeed) {
+          case 'slow':
+            rate = 0.7
+            break
+          case 'fast':
+            rate = 1.3
+            break
+          default:
+            rate = 1.0
+        }
+        
+        await azureTtsService.playAudio(textToSpeak, selectedAccent, selectedGender, rate)
+      } else {
+        // 兜底使用Web Speech API
+        console.warn('Azure TTS不可用，使用Web Speech API兜底')
+        setShowFallbackMessage(true)
+        setTimeout(() => setShowFallbackMessage(false), 3000)
+        const webSpeechAccent = selectedAccent === 'gb' ? 'uk' : selectedAccent
+        ttsService.setAccent(webSpeechAccent)
+        switch (playbackSpeed) {
+          case 'slow':
+            await ttsService.speakSlowly(textToSpeak)
+            break
+          case 'fast':
+            await ttsService.speakFast(textToSpeak)
+            break
+          default:
+            await ttsService.speakNormally(textToSpeak)
+        }
       }
     } catch (error) {
       console.error('播放失败:', error)
+      // 如果Azure TTS失败，尝试使用Web Speech API兜底
+      if (azureTtsService.isAvailable()) {
+        console.warn('Azure TTS播放失败，尝试使用Web Speech API兜底')
+        setShowFallbackMessage(true)
+        setTimeout(() => setShowFallbackMessage(false), 3000)
+        try {
+          const webSpeechAccent = selectedAccent === 'gb' ? 'uk' : selectedAccent
+          ttsService.setAccent(webSpeechAccent)
+          switch (playbackSpeed) {
+            case 'slow':
+              await ttsService.speakSlowly(textToSpeak)
+              break
+            case 'fast':
+              await ttsService.speakFast(textToSpeak)
+              break
+            default:
+              await ttsService.speakNormally(textToSpeak)
+          }
+        } catch (fallbackError) {
+          console.error('Web Speech API兜底也失败:', fallbackError)
+        }
+      }
     } finally {
       setIsPlaying(false)
     }
@@ -215,7 +304,11 @@ const PracticeView = ({ analysisData, originalText, onBack, onReanalyze, current
       try {
         // 如果正在播放音频，先停止播放
         if (isPlaying) {
-          ttsService.stop()
+          if (azureTtsService.isAvailable()) {
+            azureTtsService.stop()
+          } else {
+            ttsService.stop()
+          }
           setIsPlaying(false)
         }
         
@@ -264,21 +357,48 @@ const PracticeView = ({ analysisData, originalText, onBack, onReanalyze, current
 
 
 
-  // 切换口音
-  const handleAccentChange = async (newAccent) => {
-    setSelectedAccent(newAccent)
-    ttsService.setAccent(newAccent)
+  // 切换语音
+  const handleVoiceChange = async (voiceKey) => {
+    // 从voiceKey解析accent和gender (格式: "us-male", "gb-female"等)
+    const [accent, gender] = voiceKey.split('-')
     
-    // 如果正在播放，停止当前播放
-    if (isPlaying) {
-      ttsService.stop()
-      setIsPlaying(false)
+    // 验证声音组合是否在白名单中
+    if (isValidVoiceCombination(accent, gender)) {
+      const voice = { accent, gender }
+      setSelectedAccent(voice.accent)
+      setSelectedGender(voice.gender)
+      
+      // 如果正在播放，停止当前播放
+      if (isPlaying) {
+        // 停止Azure TTS或Web Speech API
+        if (azureTtsService.isAvailable()) {
+          azureTtsService.stop()
+        } else {
+          ttsService.stop()
+        }
+        setIsPlaying(false)
+      }
+      
+      // 只有在使用Web Speech API时才需要设置口音 (gb -> uk for Web Speech API)
+      if (!azureTtsService.isAvailable()) {
+        const webSpeechAccent = voice.accent === 'gb' ? 'uk' : voice.accent
+        ttsService.setAccent(webSpeechAccent)
+      }
+      
+      // 重新分析文本以获取对应口音的音标
+      if (onReanalyze) {
+        await onReanalyze(voice.accent)
+      }
+      
+      setShowAccentDropdown(false)
     }
-    
-    // 重新分析文本以获取对应口音的音标
-    if (onReanalyze) {
-      await onReanalyze(newAccent)
-    }
+  }
+  
+  // 获取当前语音配置的显示文本
+  const getVoiceDisplayText = () => {
+    const accentText = selectedAccent === 'us' ? 'US' : 'GB'
+    const genderText = selectedGender === 'male' ? 'Male' : 'Female'
+    return `${accentText}-${genderText}`
   }
 
   // 切换句子
@@ -295,9 +415,23 @@ const PracticeView = ({ analysisData, originalText, onBack, onReanalyze, current
   // 音标点击播放
   const handlePhoneticClick = async (word) => {
     try {
-      await ttsService.speakWord(word, selectedAccent)
+      // 优先使用Azure TTS，Web Speech API作为兜底
+       if (azureTtsService.isAvailable()) {
+         await azureTtsService.playAudio(word, selectedAccent, selectedGender, 1.0)
+      } else {
+        // 兜底使用Web Speech API
+        await ttsService.speakWord(word, selectedAccent)
+      }
     } catch (error) {
       console.error('播放单词失败:', error)
+      // 如果Azure TTS失败，尝试使用Web Speech API兜底
+      if (azureTtsService.isAvailable()) {
+        try {
+          await ttsService.speakWord(word, selectedAccent)
+        } catch (fallbackError) {
+          console.error('Web Speech API兜底也失败:', fallbackError)
+        }
+      }
     }
   }
   
@@ -316,7 +450,11 @@ const PracticeView = ({ analysisData, originalText, onBack, onReanalyze, current
     } else {
       // 如果正在播放TTS音频，先停止
       if (isPlaying) {
-        ttsService.stop()
+        if (azureTtsService.isAvailable()) {
+          azureTtsService.stop()
+        } else {
+          ttsService.stop()
+        }
         setIsPlaying(false)
       }
       
@@ -348,7 +486,11 @@ const PracticeView = ({ analysisData, originalText, onBack, onReanalyze, current
       }
     }
     if (isPlaying) {
-      ttsService.stop()
+      if (azureTtsService.isAvailable()) {
+        azureTtsService.stop()
+      } else {
+        ttsService.stop()
+      }
       setIsPlaying(false)
     }
   }
@@ -394,54 +536,69 @@ const PracticeView = ({ analysisData, originalText, onBack, onReanalyze, current
             {showPhonetics ? <Eye size={16} /> : <EyeOff size={16} />}
             <span>音标</span>
           </button>
+          
           <button 
-            className={`toggle-btn ${showStructure ? 'active' : ''}`}
-            onClick={() => setShowStructure(!showStructure)}
-            title="显示/隐藏句子结构"
+            className={`toggle-btn ${showScore ? 'active' : ''}`}
+            onClick={() => setShowScore(!showScore)}
+            title="显示/隐藏评分"
           >
-            {showStructure ? <Eye size={16} /> : <EyeOff size={16} />}
-            <span>结构</span>
+            {showScore ? <Gauge size={16} /> : <EyeOff size={16} />}
+            <span>评分</span>
           </button>
-          <div className="thought-groups-button-container">
+
+        </div>
+        
+        {/* 语音选择 */}
+        <div className="voice-selection">
+          <span className="voice-label">语音:</span>
+          
+          {/* Azure TTS兜底提示 */}
+          {showFallbackMessage && (
+            <div className="fallback-message">
+              AI TTS繁忙，已帮您自动切换可使用语音
+            </div>
+          )}
+          
+          {/* 口音选择下拉菜单 */}
+          <div className="dropdown-container">
             <button 
-              className={`toggle-btn ${showThoughtGroups ? 'active' : ''}`}
+              className="dropdown-btn accent-dropdown"
               onClick={() => {
-                setShowThoughtGroups(!showThoughtGroups)
-                setShowThoughtGroupsHint(false)
+                setShowAccentDropdown(!showAccentDropdown)
               }}
-              onMouseEnter={() => setShowThoughtGroupsHint(true)}
-              onMouseLeave={() => setShowThoughtGroupsHint(false)}
-              title="显示/隐藏意群标记"
+              title="选择口音"
             >
-              {showThoughtGroups ? <Eye size={16} /> : <EyeOff size={16} />}
-              <span>意群</span>
+              {selectedAccent === 'us' ? 'US' : 'UK'}-{selectedGender === 'male' ? 'Male' : 'Female'}
+              <span className="dropdown-arrow">▼</span>
             </button>
-            {/* 意群提示（显示在按钮正下方） */}
-            {showThoughtGroupsHint && (
-              <div className="thought-groups-hint">
-                <span className="hint-text">💡 斜杠 / 表示自然停顿点，帮助掌握朗读节奏</span>
+            
+            {showAccentDropdown && (
+              <div className="dropdown-menu accent-menu">
+                {Object.entries(VOICE_CONFIG).map(([accentKey, accentConfig]) => 
+                  Object.entries(accentConfig.voices).map(([genderKey, voiceInfo]) => {
+                    const voiceKey = `${accentKey}-${genderKey}`
+                    const isActive = selectedAccent === accentKey && selectedGender === genderKey
+                    const displayLabel = accentKey.toUpperCase() === 'GB' ? 'UK' : accentKey.toUpperCase()
+                    
+                    return (
+                      <button 
+                        key={voiceKey}
+                        className={`dropdown-item ${isActive ? 'active' : ''}`}
+                        onClick={() => handleVoiceChange(voiceKey)}
+                        title={voiceInfo.description}
+                      >
+                        {displayLabel}-{genderKey === 'male' ? 'Male' : 'Female'}
+                      </button>
+                    )
+                  })
+                )}
               </div>
             )}
           </div>
-        </div>
-        
-        {/* 口音切换 */}
-        <div className="accent-toggles">
-          <span className="accent-label">口音:</span>
-          <button 
-            className={`accent-btn ${selectedAccent === 'us' ? 'active' : ''}`}
-            onClick={() => handleAccentChange('us')}
-            title="美式发音"
-          >
-            🇺🇸 美音
-          </button>
-          <button 
-            className={`accent-btn ${selectedAccent === 'uk' ? 'active' : ''}`}
-            onClick={() => handleAccentChange('uk')}
-            title="英式发音"
-          >
-            🇬🇧 英音
-          </button>
+          
+
+          
+
         </div>
       </motion.div>
 
@@ -480,65 +637,14 @@ const PracticeView = ({ analysisData, originalText, onBack, onReanalyze, current
           <div className="text-display">
             {displaySentences.map((sentence, sentenceIndex) => (
               <div key={sentence.id} className="sentence-container">
-                {/* 句子文本，融合意群斜杠和音标 */}
-                <div className="sentence-text-with-groups">
-                  {showThoughtGroups ? (
-                    // 显示带意群斜杠的句子
-                    sentence.thoughtGroupsWithSlashes.split(' / ').map((group, groupIndex, groups) => (
-                      <span key={groupIndex} className="thought-group-container">
-                        {group.split(' ').map((word, wordIndex) => {
-                          const wordData = sentence.words.find(w => w.original.toLowerCase() === word.toLowerCase())
-                          const originalWordIndex = sentence.words.findIndex(w => w.original.toLowerCase() === word.toLowerCase())
-                          const wordId = practiceMode === 'full' ? `${sentenceIndex}-${originalWordIndex}` : `${currentSentenceIndex}-${originalWordIndex}`
-                          return wordData ? (
-                            <div key={`${groupIndex}-${wordIndex}`} className="word-with-phonetic">
-                              <motion.span
-                                className={`inline-word ${
-                                  highlightedWords.has(wordId) ? 'highlighted' : ''
-                                } ${
-                                  scoreData?.missedWordsList.some(missed => missed.word === wordData.text.toLowerCase()) ? 'missed' : ''
-                                }`}
-                                data-word={wordData.text.toLowerCase()}
-                                data-word-id={wordId}
-                                whileHover={{ scale: 1.05 }}
-                                animate={highlightedWords.has(wordId) ? {
-                                  scale: [1, 1.1, 1],
-                                  transition: { duration: 0.3 }
-                                } : {}}
-                                title={showPhonetics ? wordData.phonetic : wordData.original}
-                              >
-                                {wordData.original}
-                              </motion.span>
-                              {showPhonetics && (
-                                <div 
-                                  className="word-phonetic-below clickable"
-                                  onClick={() => handlePhoneticClick(wordData.text)}
-                                  title={`点击播放 ${wordData.text} 的${selectedAccent === 'us' ? '美式' : '英式'}发音`}
-                                >
-                                  {wordData.phonetic}
-                                </div>
-                              )}
-                            </div>
-                          ) : (
-                            <div key={`${groupIndex}-${wordIndex}`} className="word-with-phonetic">
-                              <span>{word}</span>
-                              {showPhonetics && <div className="word-phonetic-below"></div>}
-                            </div>
-                          )
-                        })}
-                        {groupIndex < groups.length - 1 && (
-                          <span className="slash-marker"> / </span>
-                        )}
-                      </span>
-                    ))
-                  ) : (
-                    // 显示普通句子
-                    <div className="words-container">
-                      {sentence.words.map((word, wordIndex) => {
-                        const wordId = practiceMode === 'full' ? `${sentenceIndex}-${wordIndex}` : `${currentSentenceIndex}-${wordIndex}`
-                        return (
-                          <div key={wordIndex} className="word-with-phonetic">
-                            <motion.span
+                {/* 句子文本 */}
+                <div className="sentence-text">
+                  <div className="words-container">
+                    {sentence.words.map((word, wordIndex) => {
+                      const wordId = practiceMode === 'full' ? `${sentenceIndex}-${wordIndex}` : `${currentSentenceIndex}-${wordIndex}`
+                      return (
+                        <div key={wordIndex} className="word-with-phonetic">
+                          <motion.span
                             className={`inline-word ${
                               highlightedWords.has(wordId) ? 'highlighted' : ''
                             } ${
@@ -565,10 +671,9 @@ const PracticeView = ({ analysisData, originalText, onBack, onReanalyze, current
                             </div>
                           )}
                         </div>
-                        )
-                      })}
-                    </div>
-                  )}
+                      )
+                    })}
+                  </div>
                 </div>
                 
 
@@ -647,8 +752,9 @@ const PracticeView = ({ analysisData, originalText, onBack, onReanalyze, current
 
         {/* 评分显示 */}
         <AnimatePresence>
-          {scoreData && (
+          {scoreData && showScore && (
             <motion.div 
+              ref={scoreDisplayRef}
               className="score-display"
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -673,18 +779,14 @@ const PracticeView = ({ analysisData, originalText, onBack, onReanalyze, current
                   </div>
                   
                   <div className="score-grade">
-                    <Award 
-                      size={20} 
-                      style={{ color: SpeechScoringService.getScoreGrade(scoreData.score).color }}
-                    />
-                    <span 
-                      style={{ color: SpeechScoringService.getScoreGrade(scoreData.score).color }}
-                    >
-                      {SpeechScoringService.getScoreGrade(scoreData.score).grade}
-                    </span>
-                    <span className="grade-message">
-                      {SpeechScoringService.getScoreGrade(scoreData.score).message}
-                    </span>
+                    <div className="grade-message-chinese">
+                      {SpeechScoringService.getScoreGrade(scoreData.score).message.chinese}
+                    </div>
+                    {SpeechScoringService.getScoreGrade(scoreData.score).message.english && (
+                      <div className="grade-message-english">
+                        {SpeechScoringService.getScoreGrade(scoreData.score).message.english}
+                      </div>
+                    )}
                   </div>
                 </div>
                 
@@ -714,76 +816,7 @@ const PracticeView = ({ analysisData, originalText, onBack, onReanalyze, current
           )}
         </AnimatePresence>
 
-        {/* 句子结构显示 */}
-        {showStructure && (
-          <motion.div 
-            className="structure-display"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.4 }}
-          >
-            <h3>句子结构分析</h3>
-            <div className="structure-blocks">
-              {practiceMode === 'full' ? (
-                // 全篇模式：显示所有句子的结构分析
-                analysisData.sentences.map((sentence, sentenceIndex) => (
-                  <div key={sentence.id} className="sentence-structure">
-                    <div className="grammar-analysis">
-                      <div className="grammar-brief">
-                        {sentence.grammarAnalysis.brief}
-                      </div>
-                      {expandedStructure[sentenceIndex] && (
-                        <div className="grammar-detailed">
-                          {sentence.grammarAnalysis.detailed.split('\n').map((line, lineIndex) => (
-                            <div key={lineIndex} className="grammar-line">
-                              {line}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                      <button 
-                        className="expand-toggle"
-                        onClick={() => setExpandedStructure(prev => ({
-                          ...prev,
-                          [sentenceIndex]: !prev[sentenceIndex]
-                        }))}
-                      >
-                        {expandedStructure[sentenceIndex] ? '▲ 收起' : '▼ 展开详细分析'}
-                      </button>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                // 逐句模式：只显示当前句子的结构分析
-                <div className="sentence-structure">
-                  <div className="grammar-analysis">
-                    <div className="grammar-brief">
-                      {currentSentence.grammarAnalysis.brief}
-                    </div>
-                    {expandedStructure[currentSentenceIndex] && (
-                      <div className="grammar-detailed">
-                        {currentSentence.grammarAnalysis.detailed.split('\n').map((line, lineIndex) => (
-                          <div key={lineIndex} className="grammar-line">
-                            {line}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    <button 
-                      className="expand-toggle"
-                      onClick={() => setExpandedStructure(prev => ({
-                        ...prev,
-                        [currentSentenceIndex]: !prev[currentSentenceIndex]
-                      }))}
-                    >
-                      {expandedStructure[currentSentenceIndex] ? '▲ 收起' : '▼ 展开详细分析'}
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          </motion.div>
-        )}
+
       </motion.div>
     </div>
   )

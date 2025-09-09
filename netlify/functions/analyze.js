@@ -49,21 +49,14 @@ Paragraph to analyze: ${params.text}`;
           temperature: 0.3
         }
       };
-    } else if (type === 'tts') {
-      apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${apiKey}`;
-      const speedPrompts = {
-        slow: "Say very slowly and clearly",
-        normal: "Say at a normal conversational pace",
-        fast: "Say quickly but clearly"
-      };
-      const accentPrompt = params.accent === 'uk' ? 'in a standard British accent' : 'in a standard American accent';
-      const fullPrompt = `${speedPrompts[params.speed]} ${accentPrompt}: ${params.text}`;
-      
-      payload = {
-        contents: [{ parts: [{ text: fullPrompt }] }],
-        generationConfig: {
-          responseModalities: ["AUDIO"]
-        }
+    } else {
+      return {
+        statusCode: 400,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        },
+        body: JSON.stringify({ error: 'Unsupported request type. Only "analysis" is supported.' })
       };
     }
 

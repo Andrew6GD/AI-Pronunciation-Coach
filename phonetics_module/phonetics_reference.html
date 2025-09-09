@@ -1,0 +1,3475 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>练习 - AI Pronunciation Coach</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Doulos+SIL&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #f8fafc;
+            --card: #ffffff;
+            --text: #1e293b;
+            --muted: #64748b;
+            --primary: #6366f1;
+            --primary-weak: #eef2ff;
+            --accent: #22c55e;
+            --danger: #ef4444;
+            --border: #e2e8f0;
+            --shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            --shadow-lg: 0 8px 25px rgba(0, 0, 0, 0.12);
+            --radius: 16px;
+            --radius-sm: 8px;
+            --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            --font-ipa: 'Doulos SIL', 'Charis SIL', 'Gentium Plus', 'Noto Serif', 'Times New Roman', 'Georgia', serif;
+        }
+
+        *, *::before, *::after {
+            box-sizing: border-box;
+        }
+
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            background: var(--bg);
+            color: var(--text);
+            font-family: var(--font-body);
+            font-size: 16px;
+            line-height: 1.5;
+            /* 禁用外层滚动，仅在内容区滚动 */
+            overflow: hidden;
+        }
+
+        .page {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Enhanced Topbar */
+        .topbar {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: saturate(1.2) blur(12px);
+            background: rgba(255, 255, 255, 0.95);
+            border-bottom: 1px solid var(--border);
+            height: 72px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            padding: 0 20px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+        }
+
+        /* Enhanced Bottom Bar */
+        .bottombar {
+            position: sticky;
+            bottom: 0;
+            z-index: 100;
+            backdrop-filter: saturate(1.2) blur(12px);
+            background: rgba(255, 255, 255, 0.95);
+            border-top: 1px solid var(--border);
+            height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            padding: 0 20px;
+            box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.04);
+        }
+
+        .content {
+            position: relative;
+            flex: 1;
+            overflow: auto;
+            padding: 32px 20px 140px;
+            /* 自定义滚动条：默认隐藏，hover/滚动时显示，更浅颜色 */
+            scrollbar-width: thin; /* Firefox */
+            scrollbar-color: transparent transparent; /* Firefox 默认隐藏 */
+        }
+        .content:hover { scrollbar-color: rgba(60,60,60,0.25) transparent; }
+        /* WebKit 滚动条样式 */
+        .content::-webkit-scrollbar {
+            width: 10px;
+            background: transparent;
+        }
+        .content::-webkit-scrollbar-thumb {
+            background-color: rgba(60,60,60,0.18); /* 更浅 */
+            border-radius: 8px;
+            border: 3px solid transparent; /* 形成内凹效果，进一步变浅 */
+            background-clip: padding-box;
+            opacity: 0; /* 初始隐藏（结合下面选择器控制可见） */
+        }
+        .content::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        /* 默认尽量隐藏，鼠标悬停到内容区或正在滚动时再可见 */
+        .content:hover::-webkit-scrollbar-thumb,
+        .content:active::-webkit-scrollbar-thumb {
+            opacity: 1;
+            background-color: rgba(60,60,60,0.28);
+        }
+
+        /* Enhanced Floating Logo */
+        .floating-logo {
+            position: fixed;
+            left: 20px;
+            top: 10px;
+            z-index: 200;
+            display: flex;
+            align-items: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            user-select: none;
+            background: var(--card);
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow);
+            border-radius: 999px;
+            padding: 12px 16px;
+            gap: 10px;
+        }
+
+        .floating-logo.compact {
+            padding: 12px;
+        }
+
+        .floating-logo .logo {
+            width: 28px;
+            height: 28px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            background: transparent;
+            padding: 0;
+        }
+        .floating-logo .logo svg { width: 28px; height: auto; display: block; }
+        .floating-logo .text {
+            white-space: nowrap;
+            font-weight: 600;
+            letter-spacing: 0.3px;
+            font-size: 15px;
+        }
+
+        /* Enhanced Buttons */
+        .btn {
+            height: 42px;
+            padding: 0 16px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            background: var(--card);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            gap: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: inherit;
+            font-size: 14px;
+            font-weight: 500;
+            text-decoration: none;
+            color: var(--text);
+        }
+
+        .btn:hover {
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+            transform: translateY(-1px);
+        }
+
+        .btn.primary {
+            background: var(--primary);
+            color: white;
+            border-color: transparent;
+        }
+
+        .btn.ghost {
+            background: transparent;
+            border-color: transparent;
+        }
+
+        .btn.toggled {
+            border-color: var(--primary);
+            background: var(--primary-weak);
+            color: var(--primary);
+        }
+        /* Eye icon + label layout */
+        .btn .icon { display: inline-flex; align-items: center; line-height: 0; }
+        .btn .icon svg { width: 18px; height: 18px; display: block; }
+        .btn .label { line-height: 1; }
+
+        /* Disabled button state */
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Enhanced Segmented Control */
+        .seg {
+            display: inline-flex;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+            background: var(--card);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+        }
+
+        .seg .item {
+            padding: 10px 18px;
+            cursor: pointer;
+            border-right: 1px solid var(--border);
+            transition: all 0.2s ease;
+            font-size: 14px;
+            font-weight: 500;
+            position: relative;
+        }
+
+        .seg .item:last-child {
+            border-right: none;
+        }
+
+        .seg .item.active {
+            background: var(--primary);
+            color: white;
+            box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
+        }
+
+        .seg .item:not(.active):hover {
+            background: #f8fafc;
+        }
+
+        /* Enhanced Speed Control */
+        .speed {
+            display: inline-flex;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+            background: var(--card);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+        }
+
+        .speed .sitem {
+            padding: 10px 16px;
+            cursor: pointer;
+            border-right: 1px solid var(--border);
+            transition: all 0.2s ease;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .speed .sitem:last-child {
+            border-right: none;
+        }
+
+        .speed .sitem.active {
+            background: var(--primary);
+            color: white;
+        }
+
+        .speed .sitem:not(.active):hover {
+            background: #f8fafc;
+        }
+
+        /* Enhanced Sentence Cards */
+        .sentence-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            padding: 24px;
+            margin: 24px auto;
+            max-width: 960px;
+            transition: all 0.2s ease;
+        }
+
+        .sentence-card:hover {
+            box-shadow: var(--shadow-lg);
+            transform: translateY(-2px);
+        }
+
+        /* Enhanced Tokens */
+        .tokens {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px 20px;
+            font-size: 24px;
+            line-height: 1.4;
+        }
+
+        .token {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+
+        .token .word {
+            padding: 8px 12px;
+            border-radius: var(--radius-sm);
+            transition: all 0.2s ease;
+            font-weight: 500;
+        }
+
+        .token:hover .word {
+            background: #f1f5f9;
+            transform: translateY(-1px);
+        }
+
+        /* Active word highlight during recording */
+        .token.active .word {
+            color: #1d4ed8;
+            background: #dbeafe;
+            box-shadow: 0 4px 12px rgba(29, 78, 216, 0.12);
+        }
+        /* Fade-out animation when clearing blue highlight */
+        @keyframes blueFadeOut {
+            0% { color:#1d4ed8; background:#dbeafe; box-shadow: 0 4px 12px rgba(29, 78, 216, 0.12); }
+            100% { color: inherit; background: transparent; box-shadow: none; }
+        }
+        .token.fadeout .word { animation: blueFadeOut 0.6s ease forwards; }
+
+        /* Particles rising effect */
+        .particle { display: none !important; }
+        .particle.square { display: none !important; }
+        .particle.triangle { display: none !important; }
+        .particle { border-radius: 2px; background: #93c5fd; }
+        .particle.triangle {
+            width: 0; height: 0; background: transparent; border-left: 5px solid transparent; border-right: 5px solid transparent; border-bottom: 9px solid #3b82f6;
+        }
+
+        @keyframes rise {
+            from { transform: translateY(0) scale(1); opacity: 0.95; }
+            to { transform: translateY(-48px) scale(0.8); opacity: 0; }
+        }
+        @keyframes wobble {
+            0% { transform: translateX(0); }
+            50% { transform: translateX(-6px); }
+            100% { transform: translateX(6px); }
+        }
+
+        /* Enhanced IPA Styling */
+        .token .ipa {
+            font-family: var(--font-ipa);
+            font-size: 14px;
+            line-height: 1.4;
+            color: var(--muted);
+            text-align: center;
+            letter-spacing: 0.5px;
+            transition: all 0.2s ease;
+            margin-top: 0;
+        }
+
+        /* Focus states for accessibility */
+        .btn:focus-visible, .seg .item:focus-visible, .speed .sitem:focus-visible {
+            outline: 2px solid var(--primary);
+            outline-offset: 2px;
+        }
+
+        .seg .item:not(.active):hover {
+            background: #f8fafc;
+        }
+
+        /* Enhanced Speed Control */
+        .speed {
+            display: inline-flex;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+            background: var(--card);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+        }
+
+        .speed .sitem {
+            padding: 10px 16px;
+            cursor: pointer;
+            border-right: 1px solid var(--border);
+            transition: all 0.2s ease;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .speed .sitem:last-child {
+            border-right: none;
+        }
+
+        .speed .sitem.active {
+            background: var(--primary);
+            color: white;
+        }
+
+        .speed .sitem:not(.active):hover {
+            background: #f8fafc;
+        }
+
+        /* Progress Bar */
+        .progress-container {
+            margin: 20px auto;
+            max-width: 1000px;
+            background: #f1f5f9;
+            border-radius: 8px;
+            height: 8px;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary), var(--accent));
+            border-radius: 8px;
+            transition: width 0.3s ease;
+            width: 0%;
+        }
+
+        /* Dictionary Controls */
+        .dict-controls {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .dict-file-input {
+            display: none;
+        }
+
+        /* Recording Visualization removed */
+        .recording-viz {
+            display: none;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            border-radius: 8px;
+            margin: 16px 0;
+        }
+
+        .recording-viz.active {
+            display: flex;
+        }
+
+        .waveform {
+            flex: 1;
+            height: 40px;
+            background: #fee2e2;
+            border-radius: 4px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .waveform-bar {
+            position: absolute;
+            bottom: 0;
+            width: 2px;
+            background: var(--danger);
+            border-radius: 1px;
+            animation: waveAnimation 0.5s ease-in-out infinite alternate;
+        }
+
+        @keyframes waveAnimation {
+            from { height: 20%; }
+            to { height: 80%; }
+        }
+
+        .spacer {
+            flex: 1;
+        }
+
+        .play {
+            min-width: 100px;
+        }
+
+        .record {
+            min-width: 130px;
+        }
+
+        .record.recording {
+            background: var(--danger);
+            color: white;
+            border-color: transparent;
+        }
+
+        /* Keyboard Navigation Hint */
+        .keyboard-hint {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+        }
+
+        .keyboard-hint.show {
+            opacity: 1;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .topbar {
+                height: 68px;
+                padding: 0 16px;
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+
+            .bottombar {
+                height: 84px;
+                padding: 0 16px;
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+
+            .content {
+                padding: 20px 16px 160px;
+            }
+
+            .tokens {
+                font-size: 20px;
+                gap: 16px;
+            }
+
+            .sentence-card {
+                padding: 20px;
+                margin: 16px;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .tokens {
+                font-size: 18px;
+                gap: 14px;
+            }
+
+            .seg .item,
+            .speed .sitem {
+                padding: 8px 12px;
+                font-size: 13px;
+            }
+        }
+
+        /* ========= Score Card (new) ========= */
+        .score-card { display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .score-summary { text-align: center; padding: 8px 0 4px; }
+        .score-number { font-size: 64px; font-weight: 800; line-height: 1; margin: 8px 0; }
+        .stars { display: flex; gap: 8px; justify-content: center; align-items: center; margin: 6px 0 8px; }
+        .star { width: 28px; height: 28px; color: #e5e7eb; }
+         .star.on { color: #f59e0b; }
+         /* Star size pattern: small → medium → large → medium → small (scaled up) */
+         .stars .star:nth-child(1),
+         .stars .star:nth-child(5) { width: 20px; height: 20px; }
+         .stars .star:nth-child(2),
+         .stars .star:nth-child(4) { width: 26px; height: 26px; }
+         .stars .star:nth-child(3) { width: 36px; height: 36px; }
+        .score-phrase { font-size: 20px; font-weight: 800; font-style: italic; color: var(--muted); letter-spacing: 0.6px; margin-top: 6px; }
+        .score-details { color: var(--muted); white-space: pre-wrap; margin-top: 8px; display:none; }
+        /* 隐藏评分模式切换按钮 */
+        #scoreModeSwitch { display:none; }
+        /* 提示小字样式 */
+        .score-note { font-size: 12px; color: rgba(34, 197, 94, 0.65); margin-top: 16px; }
+        /* FAC breakdown styles */
+        .fac-breakdown{ display:flex; justify-content:center; gap:28px; margin-top:10px; flex-wrap:wrap; }
+        .fac-item{ text-align:center; min-width:84px; }
+        .fac-item .fac-label{ font-size:13px; color:var(--muted); }
+        .fac-item .fac-score{ font-size:22px; font-weight:800; margin-top:2px; }
+        .fac-item .fac-sub{ font-size:12px; color:var(--muted); letter-spacing:.3px; }
+        /* Phoneme chips + timeline + mode switch */
+        .chips{ display:flex; flex-wrap:wrap; gap:8px; justify-content:center; margin-top:8px; }
+        .chip{ padding:4px 10px; border-radius:999px; font-size:12px; border:1px solid #e5e7eb; background:#f3f4f6; color:#111827; }
+        .chip.warn{ background:#fff7ed; border-color:#fed7aa; color:#9a3412; }
+        .chip.bad{ background:#fee2e2; border-color:#fecaca; color:#991b1b; }
+        .timeline{ height:10px; border-radius:6px; overflow:hidden; background:#e5e7eb; max-width:560px; width:100%; margin:10px auto 0; position:relative; }
+        .timeline .seg{ height:100%; display:inline-block; }
+        .timeline .seg.ok{ background:#22c55e; }
+        .timeline .seg.warn{ background:#f59e0b; }
+        .timeline .seg.bad{ background:#ef4444; }
+        .mode-switch{ display:flex; gap:8px; justify-content:center; margin-top:6px; }
+        .mode-switch .ms-btn{ font-size:12px; padding:4px 10px; border:1px solid #e5e7eb; border-radius:999px; background:#fff; color:#374151; cursor:pointer; }
+        .mode-switch .ms-btn.active{ background:#111827; color:#fff; border-color:#111827; }
+        /* Accent dropdown menu */
+        .dropdown{ position:absolute; background:#fff; border:1px solid #e5e7eb; border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,.08); padding:6px; display:none; z-index:1000; }
+        .dropdown .dd-item{ padding:6px 10px; border-radius:8px; cursor:pointer; font-size:14px; white-space:nowrap; }
+        .dropdown .dd-item:hover{ background:#f3f4f6; }
+    </style>
+</head>
+<body>
+    <!-- Enhanced Floating Logo -->
+    <div class="floating-logo compact" id="floatingLogo">
+        <div class="logo"><svg width="810" height="744" viewBox="0 0 810 744" fill="none" xmlns="http://www.w3.org/2000/svg"><g clip-path="url(#clip0_5_14)"><path d="M588.5 0C710.831 0.000124107 810 99.169 810 221.5C810 327.092 736.114 415.425 637.222 437.623C583.067 453.483 503.271 444.697 372.686 444.697C352.186 445.697 334.735 463.636 294.686 534.697C189.934 720.56 126.715 742.284 106.926 743.965C102.924 744.305 100.19 740.928 100.196 736.911L100.946 281.821C100.951 279.427 102.662 277.403 104.963 276.74C121.767 271.901 137.208 256.357 131.186 214.197C123.002 156.913 103.186 98.6975 48.1857 85.1973C43.1859 83.3322 82.186 0.197266 200.686 0.197266H576.686C578.895 0.100941 581.178 0.0531582 583.528 0.0556641C585.181 0.019267 586.839 0 588.5 0ZM352.5 65C344.5 45.5 227.186 26.1967 185.186 72.6963C116.56 148.674 181.056 204.876 235.057 222.882C242.227 225.273 245.418 234.295 240.944 240.388C214.964 275.766 179.719 339.124 194.186 406.197C206.768 464.531 222.281 482.302 235.526 491.935C239.418 494.765 244.854 493.589 247.607 489.643L425.333 234.87C428.64 230.13 429.133 223.975 426.623 218.769L352.5 65ZM695.186 217.197C695.186 84.8936 545.541 104.121 433.857 104.494C432.38 104.499 431.436 106.045 432.081 107.373L447.557 139.252C449.521 143.299 453.3 146.164 457.747 146.845C480.953 150.395 521.795 154.848 549.686 156.197C574.191 157.383 592.106 157.87 600.173 158.391C602.186 158.521 603.695 160.202 603.409 162.198C600.358 183.5 571.588 224.567 490.75 233.472C488.708 233.697 488.356 236.133 490.343 236.657C511.695 242.293 553.573 242.744 567.813 242.727C570.341 242.723 572.142 244.976 571.191 247.318C565.826 260.524 542.728 297.467 452.251 297.226C450.089 297.22 448.011 298.332 446.818 300.136C441.711 307.859 429.518 324.958 424.452 332.035C423.504 333.36 424.457 335.197 426.086 335.197H546.686C609.186 335.197 695.185 322.697 695.186 217.197Z" fill="#34C369"/><path d="M92.1857 175.697C81.3857 131.697 51.1857 113.697 35.6859 115.197C18.6857 116.842 4.80484 165.744 0.685708 198.697C-6.31427 254.697 42.5244 338.197 45.1857 305.197C47.6857 274.197 50.6857 267.697 56.6857 260.697C66.0716 249.747 89.686 258.197 96.686 251.197C103.686 244.197 105.686 230.697 92.1857 175.697Z" fill="#3F3F3F"/><path d="M240.686 84.6968C266.643 84.6968 287.686 105.739 287.686 131.697C287.686 157.654 266.643 178.697 240.686 178.697C214.728 178.697 193.686 157.654 193.686 131.697C193.686 105.739 214.728 84.6968 240.686 84.6968ZM240.686 109.697C228.536 109.697 218.686 119.547 218.686 131.697C218.686 143.847 228.536 153.697 240.686 153.697C252.836 153.697 262.686 143.847 262.686 131.697C262.686 119.547 252.836 109.697 240.686 109.697Z" fill="#323230"/></g><defs><clipPath id="clip0_5_14"><rect width="810" height="744" fill="white"/></clipPath></defs></svg></div>
+        <div class="text">AI Pronunciation Coach</div>
+    </div>
+
+    <!-- Progress Bar -->
+    <div class="progress-container">
+        <div class="progress-bar" id="progressBar"></div>
+    </div>
+
+    <!-- Keyboard Navigation Hint -->
+    <div class="keyboard-hint" id="keyboardHint">
+        Use ← → keys to navigate sentences
+    </div>
+
+    <div class="page" id="page">
+        <!-- Enhanced Header -->
+        <header class="topbar">
+            <a class="btn" href="../index.html">← 返回</a>
+            
+            <div class="seg" id="modeSeg">
+                <div class="item active" data-mode="full">全篇练习</div>
+                <div class="item" data-mode="single">单句练习</div>
+            </div>
+            
+            <button class="btn" id="togglePhonetic"><span class="icon"></span><span class="label">音标</span></button>
+            <button class="btn" id="toggleScoring"><span class="icon"></span><span class="label">评分</span></button>
+            
+            <div class="seg" id="accentSeg" title="选择口音">
+                <div class="item active" data-accent="us">US 美音</div>
+                <div class="item" data-accent="uk">GB 英音</div>
+            </div>
+            <!-- Accent dropdowns -->
+            <div class="dropdown" id="usDropdown">
+                <div class="dd-item" data-choice="US-Female">US-Female</div>
+                <div class="dd-item" data-choice="US-Male">US-Male</div>
+            </div>
+            <div class="dropdown" id="ukDropdown">
+                <div class="dd-item" data-choice="UK-Female">UK-Female</div>
+                <div class="dd-item" data-choice="UK-Male">UK-Male</div>
+            </div>
+
+        </header>
+
+        <!-- Main Content -->
+        <main class="content">
+            <!-- Recording Visualization removed: styles deleted -->
+
+            <!-- Full Practice Section -->
+            <section id="fullSection"></section>
+
+            <!-- Single Practice Section -->
+            <section id="singleSection" hidden>
+                <div class="sentence-card">
+                    <div style="display: flex; align-items: center; justify-content: center; gap: 12px; color: var(--muted); margin-bottom: 16px;">
+                        <button class="btn ghost" id="prevBtn">‹</button>
+                        <span id="pager">1 / 1</span>
+                        <button class="btn ghost" id="nextBtn">›</button>
+                    </div>
+                    <div class="tokens" id="singleTokens"></div>
+                </div>
+            </section>
+            <!-- Scoring Result Section -->
+            <section id="scoreSection" hidden>
+                <div class="sentence-card" id="scoreCard" style="display:flex;flex-direction:column;align-items:center;justify-content:center;">
+                    <div id="scoreSummary" style="text-align:center;padding:8px 0 4px;"></div>
+                    <div class="mode-switch" id="scoreModeSwitch" style="margin-top:10px;">
+                        <button class="ms-btn" data-mode="basic">基础</button>
+                        <button class="ms-btn" data-mode="proxy">启发式音素</button>
+                        <button class="ms-btn" data-mode="real">真实 GOP</button>
+                    </div>
+                    <div class="chips" id="phonemeChips" style="display:none;"></div>
+                    <div class="timeline" id="phonemeTimeline" style="display:none;"></div>
+                    <div id="scoreDetails" class="score-details"></div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Enhanced Footer -->
+        <footer class="bottombar">
+            <div class="speed" id="speedSeg">
+                <div class="sitem" data-rate="0.8">慢速</div>
+                <div class="sitem active" data-rate="1">正常</div>
+                <div class="sitem" data-rate="1.2">快速</div>
+            </div>
+            
+            <button class="btn play" id="playBtn">▶ 播放</button>
+            <button class="btn record" id="recordBtn">🎙 开始录音</button>
+            <button class="btn" id="listenBtn" disabled>👂 听听回放</button>
+            <button class="btn" id="resetBtn">⟲ 重置</button>
+        </footer>
+    </div>
+
+    <script>
+        // ===== Score summary helpers (stars + phrase) =====
+        function __getStarCount(score){
+            const s = Math.round(Math.max(0, Math.min(100, Number(score)||0)) / 20);
+            return Math.max(0, Math.min(5, s));
+        }
+        function __getPhraseByScore(score){
+            const s = Math.max(0, Math.min(100, Number(score)||0));
+            if (s >= 95) return 'Flawless.';
+            if (s >= 90) return 'Outstanding.';
+            if (s >= 85) return 'First-rate!';
+            if (s >= 80) return 'Awesome!';
+            if (s >= 70) return 'Exceeded expectations.';
+            if (s >= 60) return "It's alright.";
+            if (s >= 50) return 'We can see your progress.';
+            if (s >= 40) return 'Keep up the great work.';
+            if (s >= 30) return "You've worked so hard.";
+            if (s >= 20) return "You'll do better next time.";
+            return "The score isn't the most important thing.";
+        }
+        function __starSVG(on){
+            return `<svg viewBox="0 0 24 24" class="star ${on?'on':''}" aria-hidden="true"><path fill="currentColor" d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>`;
+        }
+        function renderScoreSummary(score){
+            const n = Math.round(Number(score)||0);
+            const starsOn = __getStarCount(n);
+            const stars = Array.from({length:5}, (_,i)=>__starSVG(i < starsOn)).join('');
+            const phrase = __getPhraseByScore(n);
+            return `\n                <div class="score-number">${n}</div>\n                <div class="stars">${stars}</div>\n                <div class="score-phrase">${phrase}</div>\n            `;
+        }
+
+        // Build practice sentences from localStorage (set on home page) with fallback
+        function parseSentencesFromText(text){
+            if(!text) return [];
+            // Normalize whitespace and split by sentence delimiters or newlines
+            const cleaned = text.replace(/[\r\t]+/g,' ').replace(/\s+/g,' ').trim();
+            const parts = cleaned.replace(/([.!?])\s+/g,'$1\n').split(/[\n;]+/).map(s=>s.trim()).filter(Boolean);
+            // Ensure each part is not too short
+            return parts.length ? parts : [];
+        }
+        let storedText = '';
+        try { storedText = localStorage.getItem('practice_input_v1') || ''; } catch(e) { storedText = ''; }
+        const sentencesFromStorage = parseSentencesFromText(storedText);
+        const data = {
+            sentences: sentencesFromStorage.length ? sentencesFromStorage : [
+                "My family has four people",
+                "We live in a big house with a beautiful garden"
+            ]
+        };
+
+        const defaultDict = {
+            my: { us: "/maɪ/", uk: "/maɪ/" },
+            family: { us: "/ˈfæməli/", uk: "/ˈfæmɪli/" },
+            has: { us: "/hæz/", uk: "/hæz/" },
+            four: { us: "/fɔːr/", uk: "/fɔː/" },
+            people: { us: "/ˈpiːpəl/", uk: "/ˈpiːpl/" },
+            we: { us: "/wiː/", uk: "/wiː/" },
+            live: { us: "/lɪv/", uk: "/lɪv/" },
+            in: { us: "/ɪn/", uk: "/ɪn/" },
+            a: { us: "/ə/", uk: "/ə/" },
+            big: { us: "/bɪɡ/", uk: "/bɪɡ/" },
+            house: { us: "/haʊs/", uk: "/haʊs/" },
+            with: { us: "/wɪð/", uk: "/wɪð/" },
+            beautiful: { us: "/ˈbjuːtəfəl/", uk: "/ˈbjuːtɪfəl/" },
+            garden: { us: "/ˈɡɑːrdən/", uk: "/ˈɡɑːdn/" }
+        };
+
+        // Enhanced dictionary management
+        function loadDict() {
+            try {
+                const raw = localStorage.getItem('phoneticsDict');
+                if (!raw) {
+                    localStorage.setItem('phoneticsDict', JSON.stringify(defaultDict));
+                    return { ...defaultDict };
+                }
+                return { ...defaultDict, ...JSON.parse(raw) };
+            } catch (e) {
+                console.error('Error loading dictionary:', e);
+                return { ...defaultDict };
+            }
+        }
+
+        function saveDict(dict) {
+            try {
+                localStorage.setItem('phoneticsDict', JSON.stringify(dict));
+                console.log('Dictionary saved successfully');
+            } catch (e) {
+                try { sessionStorage.setItem('phonetics_skip_persist', '1'); } catch {}
+                console.warn('Save dictionary skipped (quota or blocked):', e);
+            }
+        }
+
+        // Full offline dictionary integration (US/UK)
+        const PHONETICS_DICT_VERSION_KEY = 'phoneticsDict_version';
+        const PHONETICS_DICT_VERSION = 3; // bump when structure/source changes
+        const PHONETICS_SKIP_PERSIST_KEY = 'phonetics_skip_persist';
+        const PHONETICS_INMEM_FLAG = 'phonetics_inmem_loaded';
+
+        async function tryFetchJSON(possiblePaths) {
+            for (const p of possiblePaths) {
+                try {
+                    const res = await fetch(p);
+                    if (!res.ok) continue;
+                    const json = await res.json();
+                    console.log('[Dict] Loaded', p, 'entries:', Object.keys(json).length);
+                    return json;
+                } catch (e) {
+                    // try next path
+                }
+            }
+            return null;
+        }
+
+        function wrapIPA(s) {
+            if (!s || typeof s !== 'string') return '';
+            const trimmed = s.trim();
+            if (!trimmed) return '';
+            return trimmed.startsWith('/') && trimmed.endsWith('/') ? trimmed : `/${trimmed}/`;
+        }
+
+        function buildUnifiedDict(usRaw, ukRaw) {
+            // Normalize source dictionaries to lowercase keys first
+            const normalize = (raw) => {
+                const out = {};
+                if (!raw) return out;
+                for (const k of Object.keys(raw)) {
+                    const nk = String(k || '').toLowerCase();
+                    if (!(nk in out)) out[nk] = raw[k];
+                }
+                return out;
+            };
+            const usN = normalize(usRaw);
+            const ukN = normalize(ukRaw);
+
+            const unified = {};
+            const keys = new Set([...Object.keys(usN), ...Object.keys(ukN)]);
+            for (const key of keys) {
+                const usIpa = usN[key];
+                const ukIpa = ukN[key];
+                const us = usIpa ? wrapIPA(usIpa) : undefined;
+                const uk = ukIpa ? wrapIPA(ukIpa) : undefined;
+                if (us || uk) unified[key] = { ...(us && { us }), ...(uk && { uk }) };
+            }
+            // Place minimal defaults first so full dict overrides them
+            return { ...defaultDict, ...unified };
+        }
+
+        function dictNeedsUpgrade() {
+            try {
+                const v = Number(localStorage.getItem(PHONETICS_DICT_VERSION_KEY) || '0');
+                if (v < PHONETICS_DICT_VERSION) return true;
+                const raw = localStorage.getItem('phoneticsDict');
+                if (!raw) return true;
+                const obj = JSON.parse(raw);
+                // Heuristic: full dict should have thousands of entries
+                const size = Object.keys(obj || {}).length;
+                return size < 1000;
+            } catch {
+                return true;
+            }
+        }
+
+        async function ensureFullDictionary() {
+            try {
+                if (sessionStorage.getItem(PHONETICS_INMEM_FLAG) === '1') return; // already in this session
+            } catch {}
+            if (!dictNeedsUpgrade()) return; // already loaded
+            // Try multiple locations to be robust
+            const usPaths = [
+                // Verified existing path under project
+                '/Old_code/AI Pronunciation Coach/public/data/en_US.json',
+                '/Old_code/AI%20Pronunciation%20Coach/public/data/en_US.json',
+                '../Old_code/AI Pronunciation Coach/public/data/en_US.json',
+                '../Old_code/AI%20Pronunciation%20Coach/public/data/en_US.json',
+                '../public/data/en_US.json',
+                '../Old_code/AI Pronunciation Coach/src/data/en_US.json',
+                '../Old_code/AI%20Pronunciation%20Coach/src/data/en_US.json',
+                '/public/data/en_US.json',
+                './data/en_US.json',
+                'data/en_US.json'
+            ];
+            const ukPaths = [
+                '/Old_code/AI Pronunciation Coach/public/data/en_UK.json',
+                '/Old_code/AI%20Pronunciation%20Coach/public/data/en_UK.json',
+                '../Old_code/AI Pronunciation Coach/public/data/en_UK.json',
+                '../Old_code/AI%20Pronunciation%20Coach/public/data/en_UK.json',
+                '../public/data/en_UK.json',
+                '../Old_code/AI Pronunciation Coach/src/data/en_UK.json',
+                '../Old_code/AI%20Pronunciation%20Coach/src/data/en_UK.json',
+                '/public/data/en_UK.json',
+                './data/en_UK.json',
+                'data/en_UK.json'
+            ];
+            const [usRaw, ukRaw] = await Promise.all([
+                tryFetchJSON(usPaths),
+                tryFetchJSON(ukPaths)
+            ]);
+            if (!usRaw && !ukRaw) {
+                console.warn('[Dict] Failed to load full dictionaries, keep default minimal dict.');
+                return null;
+            }
+            const unified = buildUnifiedDict(usRaw || {}, ukRaw || {});
+            // Try to persist; if quota exceeded, we still return the full in-memory dict so UI shows all IPA.
+            saveDict(unified);
+            try { localStorage.setItem(PHONETICS_DICT_VERSION_KEY, String(PHONETICS_DICT_VERSION)); } catch {}
+            try { sessionStorage.setItem(PHONETICS_INMEM_FLAG, '1'); } catch {}
+            return unified;
+        }
+
+        // State management
+        let dict = loadDict();
+        let accent = 'us';
+        let showPhonetic = false;
+        let scoringEnabled = true; // 评分默认开启
+        let mode = 'full';
+        let currentIndex = 0;
+        let rate = 1;
+        let fontSizeTier = 'medium';
+        let voiceChoiceUS = 'US-Female';
+        let voiceChoiceUK = 'UK-Female';
+
+        // DOM elements
+        const fullSection = document.getElementById('fullSection');
+        const singleSection = document.getElementById('singleSection');
+        const singleTokens = document.getElementById('singleTokens');
+        const pager = document.getElementById('pager');
+        const togglePhoneticBtn = document.getElementById('togglePhonetic');
+        const modeSeg = document.getElementById('modeSeg');
+        const accentSeg = document.getElementById('accentSeg');
+        const speedSeg = document.getElementById('speedSeg');
+        const toggleScoringBtn = document.getElementById('toggleScoring');
+
+        // Eye icons as inline SVG using currentColor so they adapt to state
+        const EYE_OPEN_SVG = `<svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M59.1999 42.2849C59.1999 49.8593 49.1711 56.0001 36.7999 56.0001C24.4287 56.0001 14.3999 49.8593 14.3999 42.2849C14.3999 34.7105 24.4287 28.5728 36.7999 28.5728C49.1711 28.5728 59.1999 34.7105 59.1999 42.2849Z" stroke="currentColor" stroke-width="4.8" stroke-linecap="round" stroke-linejoin="round"/><path fill-rule="evenodd" clip-rule="evenodd" d="M42.4003 42.2849C42.4471 44.5598 41.1127 46.6369 39.0243 47.5399C36.9357 48.443 34.5085 47.9927 32.8829 46.4007C31.2574 44.8087 30.7567 42.3911 31.6163 40.2846C32.4759 38.1777 34.5248 36.8004 36.8003 36.8001C38.2701 36.7847 39.6861 37.354 40.7363 38.3825C41.7866 39.4113 42.385 40.8148 42.4003 42.2849Z" stroke="currentColor" stroke-width="4.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M34.3998 28.573C34.3998 29.8985 35.4744 30.973 36.7998 30.973C38.1253 30.973 39.1998 29.8985 39.1998 28.573H34.3998ZM39.1998 17.6002C39.1998 16.2747 38.1253 15.2002 36.7998 15.2002C35.4744 15.2002 34.3998 16.2747 34.3998 17.6002H39.1998ZM58.5377 24.1753C59.14 22.9945 58.6709 21.5491 57.4901 20.9469C56.3093 20.3448 54.8638 20.8139 54.2619 21.9947L58.5377 24.1753ZM49.6635 31.0123C49.0613 32.1932 49.5304 33.6386 50.7112 34.2405C51.892 34.8428 53.3374 34.3736 53.9393 33.1929L49.6635 31.0123ZM19.3379 21.9947C18.7357 20.8139 17.2903 20.3448 16.1095 20.9469C14.9287 21.5491 14.4596 22.9945 15.0618 24.1753L19.3379 21.9947ZM19.6602 33.1929C20.2623 34.3736 21.7077 34.8428 22.8885 34.2405C24.0693 33.6386 24.5384 32.1932 23.9363 31.0123L19.6602 33.1929ZM39.1998 28.573V17.6002H34.3998V28.573H39.1998ZM54.2619 21.9947L49.6635 31.0123L53.9393 33.1929L58.5377 24.1753L54.2619 21.9947ZM15.0618 24.1753L19.6602 33.1929L23.9363 31.0123L19.3379 21.9947L15.0618 24.1753Z" fill="currentColor"/></svg>`;
+        const EYE_CLOSED_SVG = `<svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M40.0002 31.293C41.3256 31.293 42.4002 30.2185 42.4002 28.893C42.4002 27.5675 41.3256 26.493 40.0002 26.493V31.293ZM24.9183 56.1746C26.1015 56.772 27.545 56.2972 28.1425 55.1141C28.74 53.9308 28.2653 52.4872 27.0821 51.8898L24.9183 56.1746ZM37.6002 28.893C37.6002 30.2185 38.6748 31.293 40.0002 31.293C41.3256 31.293 42.4002 30.2185 42.4002 28.893H37.6002ZM42.4002 17.6002C42.4002 16.2747 41.3256 15.2002 40.0002 15.2002C38.6748 15.2002 37.6002 16.2747 37.6002 17.6002H42.4002ZM39.9925 26.493C38.6671 26.4973 37.596 27.5753 37.6002 28.9007C37.6044 30.2262 38.6824 31.2973 40.0079 31.293L39.9925 26.493ZM48.2328 32.3575C49.5135 32.6991 50.8287 31.9378 51.1704 30.6571C51.5119 29.3764 50.7506 28.0613 49.47 27.7197L48.2328 32.3575ZM22.5501 22.1814C21.9609 20.9941 20.5208 20.5092 19.3334 21.0983C18.1461 21.6875 17.6612 23.1276 18.2503 24.315L22.5501 22.1814ZM22.8551 33.595C23.4443 34.7823 24.8844 35.2674 26.0718 34.678C27.2591 34.0888 27.744 32.6488 27.1549 31.4614L22.8551 33.595ZM24.2351 63.974C23.337 64.949 23.3992 66.4671 24.374 67.3653C25.3489 68.2636 26.8672 68.2012 27.7653 67.2264L24.2351 63.974ZM36.0053 58.2824C36.9036 57.3074 36.8412 55.7893 35.8664 54.8911C34.8914 53.9928 33.3733 54.0552 32.4751 55.03L36.0053 58.2824ZM64.166 27.6962C65.0636 26.7211 65.0008 25.2028 64.0258 24.305C63.0508 23.4072 61.5324 23.4699 60.6344 24.445L64.166 27.6962ZM54.1704 31.4658C53.2728 32.4409 53.3356 33.9592 54.3106 34.8572C55.2856 35.7548 56.804 35.692 57.702 34.717L54.1704 31.4658ZM32.4751 55.03C31.577 56.005 31.6392 57.5231 32.614 58.4213C33.589 59.3196 35.1071 59.2572 36.0053 58.2824L32.4751 55.03ZM41.9202 48.3202L43.6853 49.9464L43.6876 49.9439L41.9202 48.3202ZM57.702 34.717C58.5999 33.742 58.5372 32.2239 57.5621 31.326C56.5871 30.4281 55.0684 30.4908 54.1704 31.4658L57.702 34.717ZM34.6338 54.2888C33.3263 54.0712 32.0901 54.9551 31.8727 56.2626C31.6553 57.5701 32.5391 58.8063 33.8466 59.0236L34.6338 54.2888ZM62.4002 43.0114H64.8002C64.8002 42.9544 64.7983 42.8978 64.7941 42.8408L62.4002 43.0114ZM57.0591 30.9702C55.8876 30.3501 54.4351 30.7971 53.8149 31.9685C53.1951 33.14 53.6418 34.5925 54.8133 35.2127L57.0591 30.9702ZM33.5096 47.7336C34.2847 48.8085 35.7848 49.0517 36.86 48.2764C37.9349 47.5013 38.1781 46.0012 37.4028 44.926L33.5096 47.7336ZM40.0002 37.3634L39.9973 34.9634H39.981L40.0002 37.3634ZM41.6735 40.2421C42.7967 40.9458 44.2776 40.6056 44.9813 39.4821C45.685 38.3589 45.3448 36.878 44.2213 36.1743L41.6735 40.2421ZM40.0002 26.493C33.4332 26.493 27.3743 28.1657 22.8813 30.9974C18.4196 33.8095 15.2002 37.996 15.2002 43.0114H20.0002C20.0002 40.2284 21.7952 37.3557 25.4406 35.0581C29.0549 32.7803 34.196 31.293 40.0002 31.293V26.493ZM15.2002 43.0114C15.2002 48.7503 19.3913 53.3836 24.9183 56.1746L27.0821 51.8898C22.3691 49.51 20.0002 46.1877 20.0002 43.0114H15.2002ZM42.4002 28.893V17.6002H37.6002V28.893H42.4002ZM40.0079 31.293C42.7845 31.284 45.55 31.642 48.2328 32.3575L49.47 27.7197C46.3784 26.8951 43.1919 26.4827 39.9925 26.493L40.0079 31.293ZM18.2503 24.315L22.8551 33.595L27.1549 31.4614L22.5501 22.1814L18.2503 24.315ZM27.7653 67.2264L36.0053 58.2824L32.4751 55.03L24.2351 63.974L27.7653 67.2264ZM60.6344 24.445L54.1704 31.4658L57.702 34.717L64.166 27.6962L60.6344 24.445ZM36.0053 58.2824L43.6853 49.9464L40.1551 46.694L32.4751 55.03L36.0053 58.2824ZM43.6876 49.9439L47.1596 46.1647L43.6268 42.9151L40.1528 46.6965L43.6876 49.9439ZM47.1596 46.1647L57.702 34.717L54.1704 31.4658L43.6268 42.9151L47.1596 46.1647ZM33.8466 59.0236C35.8808 59.3621 37.9397 59.5314 40.0018 59.5298L40.0002 54.7298C38.2028 54.7311 36.4069 54.5836 34.6338 54.2888L33.8466 59.0236ZM40.0018 59.5298C46.5688 59.5298 52.6261 57.8572 57.1189 55.0255C61.5807 52.2133 64.8002 48.0268 64.8002 43.0114H60.0002C60.0002 45.7944 58.2053 48.6671 54.5599 50.9647C50.9455 53.2424 45.8044 54.7298 40.0002 54.7298L40.0018 59.5298ZM64.7941 42.8408C64.4364 37.8146 61.5125 33.3278 57.0591 30.9702L54.8133 35.2127C57.8031 36.7954 59.766 39.8076 60.0063 43.182L64.7941 42.8408ZM37.4028 44.926C36.6904 43.9381 36.5887 42.6348 37.1394 41.5484L32.8578 39.3784C31.4957 42.0661 31.7471 45.2895 33.5096 47.7336L37.4028 44.926ZM37.1394 41.5484C37.6901 40.4616 38.8012 39.773 40.0194 39.7634L39.981 34.9634C36.9679 34.9874 34.22 36.6908 32.8578 39.3784L37.1394 41.5484ZM40.0031 39.7634C40.5938 39.7628 41.1727 39.9285 41.6735 40.2421L44.2213 36.1743C42.9554 35.3813 41.4911 34.9615 39.9973 34.9634L40.0031 39.7634Z" fill="currentColor"/></svg>`;
+
+        function setEyeButton(btn, on, label) {
+            if (!btn) return;
+            btn.innerHTML = `<span class="icon">${on ? EYE_OPEN_SVG : EYE_CLOSED_SVG}</span><span class="label">${label}</span>`;
+            btn.classList.toggle('toggled', on);
+        }
+        const usDropdown = document.getElementById('usDropdown');
+        const ukDropdown = document.getElementById('ukDropdown');
+        const playBtn = document.getElementById('playBtn');
+        const recordBtn = document.getElementById('recordBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const listenBtn = document.getElementById('listenBtn');
+        const floatingLogo = document.getElementById('floatingLogo');
+        const progressBar = document.getElementById('progressBar');
+        const keyboardHint = document.getElementById('keyboardHint');
+        const recordingViz = null; // removed UI
+        // 新增：句子翻页按钮
+        const prevBtn = document.getElementById('prevBtn');
+        const nextBtn = document.getElementById('nextBtn');
+        // duplicate declarations removed
+
+        // Enhanced floating logo
+        function setLogoCompact(compact) {
+            floatingLogo.classList.toggle('compact', compact);
+            floatingLogo.querySelector('.text').style.display = compact ? 'none' : 'block';
+        }
+
+        setLogoCompact(true);
+        floatingLogo.addEventListener('click', () => {
+            setLogoCompact(!floatingLogo.classList.contains('compact'));
+        });
+
+        // Duplicated utility and render functions removed (single source above)
+
+        // Initialize (deduplicated DOM element references are defined earlier)
+
+        // Settings persistence
+        const SETTINGS_KEY = 'practice_settings_v1';
+        function loadSettings() {
+            try {
+                const raw = localStorage.getItem(SETTINGS_KEY);
+                if (!raw) return;
+                const s = JSON.parse(raw);
+                if (s.accent) accent = s.accent;
+                if (typeof s.showPhonetic === 'boolean') showPhonetic = s.showPhonetic;
+                if (typeof s.scoringEnabled === 'boolean') scoringEnabled = s.scoringEnabled;
+                if (s.voiceChoiceUS) voiceChoiceUS = s.voiceChoiceUS;
+                if (s.voiceChoiceUK) voiceChoiceUK = s.voiceChoiceUK;
+                if (s.mode) mode = s.mode;
+                if (s.rate) rate = s.rate;
+                if (s.fontSizeTier) fontSizeTier = s.fontSizeTier;
+                if (Number.isInteger(s.currentIndex)) currentIndex = Math.min(Math.max(0, s.currentIndex), data.sentences.length - 1);
+            } catch (e) {
+                console.warn('Failed to load settings', e);
+            }
+        }
+        function saveSettings() {
+            try {
+                localStorage.setItem(SETTINGS_KEY, JSON.stringify({ accent, showPhonetic, scoringEnabled, voiceChoiceUS, voiceChoiceUK, mode, rate, currentIndex, fontSizeTier }));
+            } catch (e) {
+                console.warn('Failed to save settings', e);
+            }
+        }
+// 根据三档设置缩放比例
+function setContentScale(tier) {
+    const scale = tier === 'small' ? 0.9 : (tier === 'large' ? 1.15 : 1);
+    document.documentElement.style.setProperty('--content-scale', String(scale));
+}
+
+        function tokenize(sentence) {
+            return sentence.split(/\s+/).filter(Boolean);
+        }
+
+        function getPhonetic(word) {
+            const key = word.toLowerCase().replace(/[^a-z']/g, '');
+            const entry = dict[key];
+            if (!entry) return '';
+            return entry[accent] || entry[accent === 'us' ? 'uk' : 'us'] || '';
+        }
+
+        // Token renderer (word + IPA) with click-to-speak
+        function renderToken(word) {
+            const token = document.createElement('div');
+            token.className = 'token';
+            
+            const wordEl = document.createElement('div');
+            wordEl.className = 'word';
+            wordEl.textContent = word;
+            
+            const ipaEl = document.createElement('div');
+            ipaEl.className = 'ipa';
+            const ipaText = getPhonetic(word);
+            ipaEl.textContent = ipaText;
+            ipaEl.dataset.empty = ipaText ? 'false' : 'true';
+            ipaEl.style.display = showPhonetic ? 'block' : 'none';
+            
+            token.appendChild(wordEl);
+            token.appendChild(ipaEl);
+            
+            // Click actions
+            token.addEventListener('click', () => speakWord(word));
+            ipaEl.addEventListener('click', (e) => {
+                e.stopPropagation();
+                speakWord(word);
+            });
+            
+            return token;
+        }
+
+        function updateProgress() {
+            if (mode === 'single') {
+                const progress = ((currentIndex + 1) / data.sentences.length) * 100;
+                progressBar.style.width = `${progress}%`;
+            } else {
+                progressBar.style.width = '100%';
+            }
+        }
+
+        // Enhanced render function
+        function render() {
+            setEyeButton(togglePhoneticBtn, showPhonetic, '音标');
+            
+            updateProgress();
+            // 新增：根据模式显示/隐藏键盘提示
+            keyboardHint.style.display = (mode === 'single') ? 'block' : 'none';
+
+            if (mode === 'full') {
+                singleSection.hidden = true;
+                fullSection.hidden = false;
+                fullSection.innerHTML = '';
+                
+                data.sentences.forEach(sentence => {
+                    const card = document.createElement('div');
+                    card.className = 'sentence-card';
+                    
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'tokens';
+                    
+                    tokenize(sentence).forEach(word => {
+                        wrapper.appendChild(renderToken(word));
+                    });
+                    
+                    card.appendChild(wrapper);
+                    fullSection.appendChild(card);
+                });
+            } else {
+                fullSection.hidden = true;
+                singleSection.hidden = false;
+                pager.textContent = `${currentIndex + 1} / ${data.sentences.length}`;
+                
+                singleTokens.innerHTML = '';
+                tokenize(data.sentences[currentIndex]).forEach(word => {
+                    singleTokens.appendChild(renderToken(word));
+                });
+            }
+            // 如果正在录音，重新绑定词高亮
+            if (recordBtn && recordBtn.classList.contains('recording')) {
+                prepareRecordingHighlight && prepareRecordingHighlight();
+            }
+        }
+
+        // 页面加载后初始化并首次渲染
+        try {
+            applyUIState();
+            render();
+        } catch (e) {
+            console.error('initial render error:', e);
+        }
+
+        // Initialize UI from settings
+        loadSettings();
+        setContentScale(fontSizeTier);
+        render();
+        // 异步升级完整词典并刷新
+        ensureFullDictionary().then(nd => { if (nd) { dict = nd; render(); } });
+        // 保证切换口音时若另一口音存在也能显示
+        if (accentSeg) {
+            accentSeg.addEventListener('click', async (e) => {
+                const prev = accent;
+                // existing logic may update accent elsewhere; we just ensure dict ready then re-render
+                const nd = await ensureFullDictionary();
+                if (nd) dict = nd;
+                render();
+            }, { capture: true });
+        }
+
+        // 录音过程单词高亮：基于识别结果逐词点亮（单句/全篇均可）
+        function clearRecordingHighlight(animate){
+            try {
+                const st = window.__recHL || {};
+                if (st.timer) { clearInterval(st.timer); }
+                if (st.recognition) { try { st._stopByApp = true; st.recognition.onresult = null; st.recognition.onend = null; st.recognition.stop(); } catch {} }
+                const toks = Array.isArray(st.tokens)?st.tokens:[];
+                if (animate) { toks.forEach(el=>{ if (el && el.classList && el.classList.contains('active')) el.classList.add('fadeout'); }); }
+                if (toks.length) { toks.forEach(el => el && el.classList && el.classList.remove('active')); }
+                if (animate) { setTimeout(()=>{ toks.forEach(el=> el && el.classList && el.classList.remove('fadeout')); }, 800); }
+                // Preserve recognized words and normalized tokens for coverage computation
+                window.__recHL = Object.assign({}, st, { timer: null, recognition: null });
+                // 同步停止实时语音门控
+                try { stopVAD(); } catch {}
+                try { if (window.__blueTracker) { window.__blueTracker.idx = -1; window.__blueTracker.setSpeaking(false); } } catch {}
+            } catch {}
+        }
+        function stopRecHighlightEnginesPreserve(){
+            try {
+                const st = window.__recHL || {};
+                if (st.timer) { clearInterval(st.timer); }
+                if (st.recognition) { try { st._stopByApp = true; st.recognition.onresult = null; st.recognition.onend = null; st.recognition.stop(); } catch {} }
+                window.__recHL = Object.assign({}, st, { timer: null, recognition: null });
+                try { stopVAD(); } catch {}
+                try { if (window.__blueTracker) { window.__blueTracker.setSpeaking(false); } } catch {}
+            } catch {}
+        }
+        function scheduleBlueClear(ms=5000, animate=true){
+            try{
+                if (window.__blueClearTimer) { clearTimeout(window.__blueClearTimer); }
+                window.__blueClearTimer = setTimeout(()=>{ try { clearRecordingHighlight && clearRecordingHighlight(animate); } catch {} }, ms);
+            }catch{}
+        }
+        class BlueTracker{ constructor(refTokens){ this.ref=Array.isArray(refTokens)?refTokens:[]; this.idx=-1; this.speaking=false; this.lastSpeakingAt=0; this.lastAdvanceAt=0; this.minAdvanceGapMs=70; this.maxSkipInSpeechMs=800; } setSpeaking(on){const now=performance.now(); this.speaking=!!on; if(on) this.lastSpeakingAt=now;} tryAlignAndAdvance(partialTokens){ const now=performance.now(); if(!this.speaking) return false; if(now - this.lastAdvanceAt < this.minAdvanceGapMs) return false; const hyp = Array.isArray(partialTokens)?partialTokens:[]; const norm = s => (s||'').toLowerCase().replace(/^'+|'+$/g,'').replace(/'/g,''); const eq = (a,b) => { try { return typeof fuzzyEqStrict==='function' ? fuzzyEqStrict(norm(a), norm(b)) : (norm(a)===norm(b)); } catch { return norm(a)===norm(b); } }; const start=this.idx+1; const lookAhead=8; const windowRef=this.ref.slice(start, start+lookAhead); let step=0; for(let k=windowRef.length-1;k>=0;k--){ const target=windowRef[k]; if(hyp.some(h=>eq(h,target))){ step=k+1; break; } } if(step>0){ this.idx=Math.min(this.idx+step, this.ref.length-1); this.lastAdvanceAt=now; return true; } if(now - this.lastAdvanceAt > this.maxSkipInSpeechMs){ this.idx=Math.min(this.idx+1, this.ref.length-1); this.lastAdvanceAt=now; return true; } return false; } }
+function __syncHighlightFromTracker(){ try{ const st=window.__recHL||{}; const tracker=window.__blueTracker; if(!st.tokens||!tracker) return; const norm=Array.isArray(st.normTokens)?st.normTokens:[]; const targetRaw=Math.max(-1,Math.min(tracker.idx,norm.length-1)); const wsIdx=Array.isArray(st.wordSentenceIdx)?st.wordSentenceIdx:[]; const ranges=Array.isArray(st.sentRanges)?st.sentRanges:[]; const currSent=(typeof st.sentIdx==='number')?st.sentIdx:0; const targetSent=(targetRaw>=0&&wsIdx[targetRaw]!=null)?wsIdx[targetRaw]:currSent; if(typeof targetSent==='number' && targetSent>(st.sentIdx||0)){ st.sentIdx=Math.min(targetSent, ranges.length-1); } const currRange=ranges[st.sentIdx||0] || { first:0, last:norm.length-1 }; const clamped=Math.max(currRange.first-1, Math.min(targetRaw, currRange.last)); if(clamped>=0){ const tIdx=st.wordTokenIndexes[clamped]; const el=st.tokens[tIdx]; if(el&&el.classList) el.classList.add('active'); } st.wordIdx=clamped; window.__recHL=st; }catch(e){} }
+function prepareRecordingHighlight(){
+            clearRecordingHighlight();
+            try {
+                if (!recordBtn || !recordBtn.classList.contains('recording')) return;
+                // 收集 tokens（单句/全篇）
+                const container = (mode === 'single') ? (singleTokens || document) : (fullSection || document);
+                const tokens = Array.from(container.querySelectorAll('.sentence-card .tokens .token, .tokens .token, .token'));
+                if (!tokens.length) return;
+                // 提取每个 token 的文本，并规范化（仅保留字母和撇号）
+                const raw = tokens.map(t => {
+                    const w = t.querySelector('.word');
+                    return w ? w.textContent : t.textContent;
+                });
+                const normPerToken = raw.map(w => (w||'').toLowerCase().replace(/[^a-z']/g,''));
+                // 仅对“有词”的 token 建立索引映射，避免把标点当作词高亮
+                const wordTokenIndexes = [];
+                const normWords = [];
+                normPerToken.forEach((nw, i) => { if (nw) { wordTokenIndexes.push(i); normWords.push(nw); } });
+                if (!normWords.length) return;
+                try { window.__blueTracker = new BlueTracker(normWords); } catch {}
+                // Re-start VAD after re-prepare so fallback timer and tracker speaking state work for subsequent sentences
+                try {
+                    if (recordBtn && recordBtn.classList.contains('recording')) {
+                        if (typeof mediaStream !== 'undefined' && mediaStream) {
+                            startVAD(mediaStream);
+                        } else {
+                            // If no mediaStream (e.g., SR-only path), do not block fallback timers
+                            window.__vadSpeaking = undefined;
+                        }
+                    }
+                } catch {}
+
+
+                // 句子边界映射：把每个词映射到其所属 sentence-card，生成每句词范围
+                const sentenceCards = Array.from(container.querySelectorAll('.sentence-card'));
+                const cardIndexMap = new Map(sentenceCards.map((c,i)=>[c,i]));
+                const wordSentenceIdx = wordTokenIndexes.map(tIdx => {
+                    const card = tokens[tIdx]?.closest('.sentence-card');
+                    const i = cardIndexMap.get(card);
+                    return (typeof i === 'number') ? i : 0;
+                });
+                const sentRanges = [];
+                const maxSent = wordSentenceIdx.reduce((a,b)=>Math.max(a,b),0);
+                for (let s=0; s<=maxSent; s++){
+                    let first=-1,last=-1;
+                    for (let i=0;i<wordSentenceIdx.length;i++){
+                        if (wordSentenceIdx[i]===s){ if (first<0) first=i; last=i; }
+                    }
+                    sentRanges[s] = { first, last };
+                }
+                let sentIdx = 0; // 当前句索引
+                const prevSt = window.__recHL || {};
+                if (typeof prevSt.sentIdx === 'number') sentIdx = Math.min(prevSt.sentIdx, Math.max(0, sentRanges.length-1));
+
+                let wordIdx = -1; // 词级索引
+                const addActiveAt = (wi) => {
+                    const tIdx = wordTokenIndexes[wi];
+                    if (tokens[tIdx] && tokens[tIdx].classList) tokens[tIdx].classList.add('active');
+                };
+                const removeActiveAt = (wi) => {
+                    const tIdx = wordTokenIndexes[wi];
+                    if (tIdx != null && tokens[tIdx] && tokens[tIdx].classList) tokens[tIdx].classList.remove('active');
+                };
+                const getCurrRange = ()=> sentRanges[sentIdx] || { first: 0, last: normWords.length - 1 };
+                const advanceWord = () => {
+                    const range = getCurrRange();
+                    const target = Math.min((wordIdx < range.first - 1 ? range.first : wordIdx + 1), range.last);
+                    // keep blue: do not removeActiveAt(wordIdx)
+                    wordIdx = target;
+                    addActiveAt(wordIdx);
+                    const st = window.__recHL || {}; st.wordIdx = wordIdx; st.sentIdx = sentIdx; window.__recHL = st;
+                    try { if (window.__blueTracker) { window.__blueTracker.idx = Math.max(window.__blueTracker.idx, wordIdx); } } catch {}
+                    try { __syncHighlightFromTracker(); } catch {}
+                    // fallback timer path: auto advance to next sentence when reaching end of current sentence
+                    if ((!st.recognition) && wordIdx >= range.last) {
+                        const nr = sentRanges[sentIdx + 1];
+                        if (nr && nr.first >= 0) {
+                            // keep blue: do not remove previous active when moving to next sentence
+                            sentIdx = sentIdx + 1;
+                            wordIdx = nr.first;
+                            addActiveAt(wordIdx);
+                            st.wordIdx = wordIdx; st.sentIdx = sentIdx; window.__recHL = st;
+                            try { if (window.__blueTracker) { window.__blueTracker.idx = Math.max(window.__blueTracker.idx, wordIdx); } } catch {}
+                            try { __syncHighlightFromTracker(); } catch {}
+                        }
+                    }
+                };
+                // Web Speech 识别优先，其次退化为简单的时间推进
+                const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+                if (SR) {
+                    const rec = new SR();
+                    rec.continuous = true;
+                    rec.interimResults = true;
+                    rec.maxAlternatives = 1;
+                    rec.lang = (accent === 'uk') ? 'en-GB' : 'en-US';
+
+                    // 仅用“最终结果”推进；短词(<=3)严格匹配；加入跳读前瞻
+                    function fuzzyEqStrict(a, b){
+                        const A = (a||'').replace(/'/g,'');
+                        const B = (b||'').replace(/'/g,'');
+                        if (A.length <= 3 || B.length <= 3) return A === B;
+                        const lev1 = (x,y)=>{
+                            const m=x.length,n=y.length; if (Math.abs(m-n)>1) return false;
+                            let i=0,j=0,d=0; while(i<m && j<n){ if(x[i]===y[j]){ i++; j++; } else { if(++d>1) return false; if(m>n) i++; else if(n>m) j++; else { i++; j++; } } }
+                            return true;
+                        };
+                        return A===B || lev1(A,B);
+                    }
+                    function processTranscript(txt, commit=false) {
+                        const fillers = new Set(['uh','um','er','erm','ah','eh','hmm','mm','mmm']);
+                        const norm = s => (s||'').toLowerCase().replace(/^'+|'+$/g,'');
+                        let parts = (txt||'').toLowerCase().match(/[a-z']+/g) || [];
+                        parts = parts.map(norm).filter(Boolean).filter(p=>!fillers.has(p));
+                        const st = window.__recHL || {};
+                        if (!Array.isArray(st.recWords)) st.recWords = [];
+                        if (parts.length) st.recWords.push(...parts);
+                        // trim recognition history to avoid drift/memory growth
+                        st.recWords = (mode === 'single') ? st.recWords.slice(-80) : st.recWords.slice(-200);
+                        // allow interim (non-final) results to advance highlight for better responsiveness
+
+                        const normWords = Array.isArray(st.normTokens) ? st.normTokens : [];
+                        const lookback = (mode === 'single') ? 28 : 40;
+                        const win = st.recWords.slice(-lookback);
+                        const currRange = (Array.isArray(st.sentRanges)?st.sentRanges:[])[st.sentIdx||0] || { first: 0, last: normWords.length-1 };
+
+                        // VAD 门控：仅对 BlueTracker 对齐尝试生效；基于 ASR 的推进不被早期 VAD 阻断
+                        const vadOk = (typeof window.__vadSpeaking === 'boolean') ? window.__vadSpeaking : true;
+                        try { if (vadOk && window.__blueTracker && window.__blueTracker.tryAlignAndAdvance(win)) { __syncHighlightFromTracker(); } } catch {}
+
+                        while (st.wordIdx + 1 <= currRange.last) {
+                            const expect = normWords[st.wordIdx + 1];
+                            const hit = win.some(w => fuzzyEqStrict(w, expect));
+                            if (!hit) break;
+                            if (st.wordIdx >= 0) {
+                                const tIdxPrev = st.wordTokenIndexes[st.wordIdx];
+                                const prevEl = st.tokens[tIdxPrev]; /* keep blue: do not remove previous active */
+                            }
+                            st.wordIdx = Math.min(st.wordIdx + 1, currRange.last);
+                            const tIdx = st.wordTokenIndexes[st.wordIdx];
+                            const el = st.tokens[tIdx]; el && el.classList && el.classList.add('active');
+                            st.__noHit = 0;
+                            try { if (window.__blueTracker) { window.__blueTracker.idx = Math.max(window.__blueTracker.idx, st.wordIdx); } } catch {}
+                            try { __syncHighlightFromTracker(); } catch {}
+                        }
+                        // 前瞻跳跃（允许跳过若干未读词继续推进）—— 仅限“当前句”范围内；单句模式启用有限前瞻以提升识别召回
+                        if (st.wordIdx + 1 <= currRange.last){
+                            st.__noHit = (st.__noHit||0) + 1;
+                            const nextN = (mode === 'single') ? 2 : 6;  // 单句更保守，全篇更积极
+                            const needNoHit = 1; // 降低门槛，提升召回
+                            if (st.__noHit >= needNoHit){
+                                const ahead = [];
+                                for (let k=1; k<=nextN && st.wordIdx + k <= currRange.last; k++){
+                                    ahead.push({ k, w: normWords[st.wordIdx + k] });
+                                }
+                                const found = ahead.find(a => win.some(w => fuzzyEqStrict(w, a.w)));
+                                if (found){
+                                    if (st.wordIdx >= 0){
+                                        const tIdxPrev = st.wordTokenIndexes[st.wordIdx];
+                                        const prevEl = st.tokens[tIdxPrev]; /* keep blue: do not remove previous active */
+                                    }
+                                    st.wordIdx = Math.min(st.wordIdx + found.k, currRange.last);
+                                    const tIdx = st.wordTokenIndexes[st.wordIdx];
+                                    const el = st.tokens[tIdx]; el && el.classList && el.classList.add('active');
+                                    st.__noHit = 0;
+                                    try { if (window.__blueTracker) { window.__blueTracker.idx = Math.max(window.__blueTracker.idx, st.wordIdx); } } catch {}
+                                    try { __syncHighlightFromTracker(); } catch {}
+                                }
+                            }
+                        } else {
+                            st.__noHit = 0;
+                        }
+                        // 节奏推进兜底：持续说话但近期无命中时，句内+1推进，帮助快语速跟上
+                        {
+                            const speaking = (typeof window.__vadSpeaking === 'boolean') ? window.__vadSpeaking : true;
+                            window.__lastRhythmStep = window.__lastRhythmStep || 0;
+                            const nowTS = performance.now();
+                            if (speaking && st.wordIdx + 1 <= currRange.last) {
+                                const gapMs = 240; // 与 BlueTracker 分离，稍保守
+                                if (nowTS - window.__lastRhythmStep > gapMs) {
+                                    st.wordIdx = Math.min(st.wordIdx + 1, currRange.last);
+                                    const tIdx = st.wordTokenIndexes[st.wordIdx];
+                                    const el = st.tokens[tIdx]; el && el.classList && el.classList.add('active');
+                                    try { if (window.__blueTracker) { window.__blueTracker.idx = Math.max(window.__blueTracker.idx, st.wordIdx); } } catch {}
+                                    try { __syncHighlightFromTracker(); } catch {}
+                                    window.__lastRhythmStep = nowTS;
+                                }
+                            }
+                        }
+
+                        // 跨句推进：当当前句已完成，检测到下一句起始词(或第二词)即可进入下一句（允许临时或最终结果触发）
+                        const nextRange = (Array.isArray(st.sentRanges)?st.sentRanges:[])[(st.sentIdx||0)+1];
+                        if (nextRange && nextRange.first >= 0 && st.wordIdx >= currRange.last){
+                            const nextFirst = normWords[nextRange.first];
+                            const nextSecond = (nextRange.first + 1 <= nextRange.last) ? normWords[nextRange.first + 1] : null;
+                            const trigger = (win.some(w => fuzzyEqStrict(w, nextFirst)) || (nextSecond && win.some(w => fuzzyEqStrict(w, nextSecond))));
+                            if (trigger){
+                                if (st.wordIdx >= 0){
+                                    const tIdxPrev = st.wordTokenIndexes[st.wordIdx];
+                                    const prevEl = st.tokens[tIdxPrev]; /* keep blue: do not remove previous active */
+                                }
+                                st.sentIdx = (st.sentIdx||0) + 1;
+                                st.wordIdx = nextRange.first;
+                                const tIdx = st.wordTokenIndexes[st.wordIdx];
+                                const el = st.tokens[tIdx]; el && el.classList && el.classList.add('active');
+                                st.__noHit = 0;
+                                try { if (window.__blueTracker) { window.__blueTracker.idx = Math.max(window.__blueTracker.idx, st.wordIdx); } } catch {}
+                                try { __syncHighlightFromTracker(); } catch {}
+                            }
+                        }
+                        window.__recHL = st;
+                    }
+                    rec.onresult = (e) => {
+                        for (let i = e.resultIndex; i < e.results.length; i++) {
+                            const r = e.results[i];
+                            processTranscript(r[0]?.transcript || '', r.isFinal === true);
+                        }
+                    };
+                    rec.onerror = (e) => {
+                        console.warn('SpeechRecognition error:', e);
+                        try { rec.onresult = null; rec.onend = null; rec.stop(); } catch {}
+                        // 回退到计时推进
+                        const st = window.__recHL || { tokens, normTokens: normWords, wordTokenIndexes, wordIdx, wordSentenceIdx, sentRanges, sentIdx };
+                        const base = 350;
+                        const stepMs = Math.max(150, Math.min(900, Math.round(base / (rate || 1))));
+                        function step() {
+                            if (!recordBtn || !recordBtn.classList.contains('recording')) { stopRecHighlightEnginesPreserve(); return; }
+                            const vadKnown = (typeof window.__vadSpeaking === 'boolean');
+                            if (vadKnown && !window.__vadSpeaking) return;
+                            advanceWord();
+                        }
+                        st.timer = setInterval(step, stepMs);
+                        st.recognition = null;
+                        st._stopByApp = false;
+                        st.lastParts = st.lastParts || [];
+                        st.recWords = (mode === 'single') ? [] : (Array.isArray(st.recWords) ? st.recWords.slice(-200) : []);
+                        window.__recHL = st;
+                        step();
+                    };
+                    rec.onend = () => {
+                        const st = window.__recHL || {};
+                        if (recordBtn && recordBtn.classList.contains('recording') && !st._stopByApp) {
+                            setTimeout(()=>{ 
+                                try { rec.start(); } catch (e) { 
+                                    // 重启失败→回退计时推进
+                                    const st2 = window.__recHL || { tokens, normTokens: normWords, wordTokenIndexes, wordIdx, wordSentenceIdx, sentRanges, sentIdx };
+                                    const base=350; const stepMs = Math.max(150, Math.min(900, Math.round(base / (rate || 1))));
+                                    function step(){ if (!recordBtn || !recordBtn.classList.contains('recording')) { stopRecHighlightEnginesPreserve(); return; } const vadKnown = (typeof window.__vadSpeaking === 'boolean'); if (vadKnown && !window.__vadSpeaking) return; advanceWord(); }
+                                    st2.timer = setInterval(step, stepMs);
+                                    st2.recognition = null;
+                                    st2._stopByApp = false;
+                                    st2.lastParts = st2.lastParts || [];
+                                    st2.recWords = (mode === 'single') ? [] : (Array.isArray(st2.recWords) ? st2.recWords.slice(-200) : []);
+                                    window.__recHL = st2;
+                                    step();
+                                } 
+                            }, 120);
+                        }
+                    };
+                    // 先建立状态，再启动识别（单句模式重置识别词历史；全篇模式保留最近200个，防止历史导致跳词或内存增长）
+                    const prevWords = (mode === 'single') ? [] : (Array.isArray((window.__recHL||{}).recWords) ? (window.__recHL||{}).recWords.slice(-200) : []);
+                    window.__recHL = { tokens, normTokens: normWords, wordTokenIndexes, wordSentenceIdx, sentRanges, sentIdx, wordIdx, recognition: rec, _stopByApp: false, timer: null, lastParts: [], recWords: prevWords };
+                    try { rec.start(); } catch (e) { 
+                        // start 抛错（常见于权限拒绝或浏览器限制）→ 回退
+                        const st = window.__recHL || { tokens, normTokens: normWords, wordTokenIndexes, wordSentenceIdx, sentRanges, sentIdx, wordIdx };
+                        const base=350; const stepMs = Math.max(150, Math.min(900, Math.round(base / (rate || 1))));
+                        function step(){ if (!recordBtn || !recordBtn.classList.contains('recording')) { stopRecHighlightEnginesPreserve(); return; } const vadKnown = (typeof window.__vadSpeaking === 'boolean'); if (vadKnown && !window.__vadSpeaking) return; advanceWord(); }
+                        st.timer = setInterval(step, stepMs);
+                        st.recognition = null;
+                        st._stopByApp = false;
+                        st.lastParts = st.lastParts || [];
+                        st.recWords = (mode === 'single') ? [] : (Array.isArray(st.recWords) ? st.recWords.slice(-200) : []);
+                        window.__recHL = st;
+                        step();
+                    }
+                } else {
+                    // Fallback：无识别API时按语速按“词”推进（退化体验）
+                    const base = 350;
+                    const stepMs = Math.max(150, Math.min(900, Math.round(base / (rate || 1))));
+                    function step() {
+                        if (!recordBtn || !recordBtn.classList.contains('recording')) { stopRecHighlightEnginesPreserve(); return; }
+                        const vadKnown = (typeof window.__vadSpeaking === 'boolean');
+                        if (vadKnown && !window.__vadSpeaking) return;
+                        advanceWord();
+                    }
+                    window.__recHL = { tokens, normTokens: normWords, wordTokenIndexes, wordSentenceIdx, sentRanges, sentIdx, wordIdx, timer: setInterval(step, stepMs), recognition: null, _stopByApp: false, lastParts: [], recWords: (mode === 'single') ? [] : [] };
+                    step();
+                }
+            } catch {}
+        }
+
+        // LCS-based coverage from recording highlight state
+        function __computeCoverageFromRecHL(){
+            const st = window.__recHL || {};
+            const ref = Array.isArray(st.normTokens) ? st.normTokens : [];
+            const hyp = Array.isArray(st.recWords) ? st.recWords : [];
+            if (!ref.length || !hyp.length) return { pct: 0, matched: 0, refCount: ref.length };
+
+            const R = ref.length, H = hyp.length;
+            const dp = Array.from({length:R+1}, ()=> new Uint16Array(H+1));
+            for (let i=1;i<=R;i++){
+                const ri = ref[i-1];
+                for (let j=1;j<=H;j++){
+                    const hj = hyp[j-1];
+                    const eq = (ri===hj) || (ri.replace(/'/g,'')===hj.replace(/'/g,'')); // 忽略撇号
+                    dp[i][j] = eq ? (dp[i-1][j-1]+1) : Math.max(dp[i-1][j], dp[i][j-1]);
+                }
+            }
+            const matched = dp[R][H];
+            const pct = Math.round(matched / Math.max(1, R) * 100);
+            return { pct, matched, refCount: R };
+        }
+
+        // 新增：控件事件绑定与 UI 状态同步
+        function applyUIState() {
+            // 模式分段
+            Array.from(modeSeg.querySelectorAll('.item')).forEach(el => {
+                el.classList.toggle('active', el.dataset.mode === mode);
+            });
+            // 口音分段
+            Array.from(accentSeg.querySelectorAll('.item')).forEach(el => {
+                el.classList.toggle('active', el.dataset.accent === accent);
+            });
+            // 语速分段
+            Array.from(speedSeg.querySelectorAll('.sitem')).forEach(el => {
+                el.classList.toggle('active', parseFloat(el.dataset.rate) === rate);
+            });
+            // 文案
+            setEyeButton(togglePhoneticBtn, showPhonetic, '音标');
+            if (typeof scoringEnabled !== 'undefined' && toggleScoringBtn) {
+                setEyeButton(toggleScoringBtn, scoringEnabled, '评分');
+            }
+            const usItem = accentSeg.querySelector('.item[data-accent="us"]');
+            const ukItem = accentSeg.querySelector('.item[data-accent="uk"]');
+            if (usItem) usItem.textContent = 'US 美音' + (voiceChoiceUS ? (' · ' + String(voiceChoiceUS).replace('US-','')) : '');
+            if (ukItem) ukItem.textContent = 'GB 英音' + (voiceChoiceUK ? (' · ' + String(voiceChoiceUK).replace('UK-','')) : '');
+            keyboardHint.style.display = (mode === 'single') ? 'block' : 'none';
+            // 评分开关即时 UI 同步：关闭时清空并隐藏评分卡
+            try {
+                if (typeof scoringEnabled !== 'undefined' && !scoringEnabled) {
+                    const scoreSection = document.getElementById('scoreSection');
+                    const scoreSummary = document.getElementById('scoreSummary');
+                    const scoreDetails = document.getElementById('scoreDetails');
+                    if (typeof clearAccuracyHighlights === 'function') { try { clearAccuracyHighlights(); } catch {} }
+                    if (scoreSummary) scoreSummary.textContent = '';
+                    if (scoreDetails) scoreDetails.textContent = '';
+                    if (scoreSection) scoreSection.hidden = true;
+                }
+            } catch {}
+        }
+
+        // 点击切换模式
+        modeSeg.addEventListener('click', (e) => {
+            const item = e.target.closest('.item');
+            if (!item) return;
+            mode = item.dataset.mode === 'single' ? 'single' : 'full';
+            applyUIState();
+            saveSettings();
+            render();
+        });
+
+        // 切换口音
+        accentSeg.addEventListener('click', (e) => {
+            const item = e.target.closest('.item');
+            if (!item) return;
+            const acc = item.dataset.accent;
+            if (acc === 'us' || acc === 'uk') accent = acc;
+            applyUIState();
+            saveSettings();
+            render();
+            // 打开对应下拉
+            try { if (item) { const r=item.getBoundingClientRect(); const dd=(accent==='uk'?ukDropdown:usDropdown); if(dd){ dd.style.left=(r.left+window.scrollX)+'px'; dd.style.top=(r.bottom+window.scrollY+6)+'px'; dd.style.display='block'; } } } catch{}
+        });
+
+        // 切换语速
+        speedSeg.addEventListener('click', (e) => {
+            const item = e.target.closest('.sitem');
+            if (!item) return;
+            const r = parseFloat(item.dataset.rate);
+            if (!Number.isNaN(r)) rate = r;
+            applyUIState();
+            saveSettings();
+        });
+
+        // 切换音标显示
+        togglePhoneticBtn.addEventListener('click', () => {
+            showPhonetic = !showPhonetic;
+            applyUIState();
+            saveSettings();
+            render();
+        });
+
+        // 评分开关
+        toggleScoringBtn && toggleScoringBtn.addEventListener('click', () => {
+            scoringEnabled = !scoringEnabled;
+            applyUIState();
+            saveSettings();
+            // 若重新开启评分且已有最近一次录音，则立即刷新评分
+            try {
+                if (scoringEnabled && typeof lastRecordedBlob !== 'undefined' && lastRecordedBlob && !window.__scoringBusy) {
+                    computeAndRenderScore(lastRecordedBlob);
+                }
+            } catch {}
+        });
+
+        // 下拉菜单交互（US/UK 性别）
+        function __hideAccentDropdowns(){ try { if (usDropdown) usDropdown.style.display = 'none'; if (ukDropdown) ukDropdown.style.display = 'none'; } catch {} }
+        usDropdown && usDropdown.addEventListener('click', (e) => {
+            const item = e.target.closest('.dd-item');
+            if (!item) return;
+            const v = item.dataset.choice;
+            if (v) voiceChoiceUS = v;
+            __hideAccentDropdowns();
+            applyUIState();
+            saveSettings();
+        });
+        ukDropdown && ukDropdown.addEventListener('click', (e) => {
+            const item = e.target.closest('.dd-item');
+            if (!item) return;
+            const v = item.dataset.choice;
+            if (v) voiceChoiceUK = v;
+            __hideAccentDropdowns();
+            applyUIState();
+            saveSettings();
+        });
+        // 点击外部关闭下拉
+        document.addEventListener('click', (e) => {
+            const inSeg = e.target.closest('#accentSeg');
+            const inDD = e.target.closest('#usDropdown') || e.target.closest('#ukDropdown');
+            if (!inSeg && !inDD) __hideAccentDropdowns();
+        });
+
+        // 句子翻页（单句模式）
+        function clampIndex(i){
+            return Math.max(0, Math.min(i, data.sentences.length - 1));
+        }
+        prevBtn && prevBtn.addEventListener('click', () => {
+            if (mode !== 'single') return;
+            currentIndex = clampIndex(currentIndex - 1);
+            saveSettings();
+            render();
+        });
+        nextBtn && nextBtn.addEventListener('click', () => {
+            if (mode !== 'single') return;
+            currentIndex = clampIndex(currentIndex + 1);
+            saveSettings();
+            render();
+        });
+
+        // 键盘导航
+        document.addEventListener('keydown', (e) => {
+            if (mode !== 'single') return;
+            if (e.key === 'ArrowLeft') {
+                e.preventDefault();
+                currentIndex = clampIndex(currentIndex - 1);
+                saveSettings();
+                render();
+            } else if (e.key === 'ArrowRight') {
+                e.preventDefault();
+                currentIndex = clampIndex(currentIndex + 1);
+                saveSettings();
+                render();
+            }
+        });
+
+        // 播放文本
+        playBtn.addEventListener('click', () => {
+            const text = mode === 'single' ? (data.sentences[currentIndex] || '') : data.sentences.join('. ');
+            speakText(text);
+        });
+
+        // 旧的“简易录音按钮”监听器已移除，避免与统一捕获阶段绑定冲突。
+
+        // 重置（仅重置录音/回放与评分状态，不影响模式/音标/英美音等设置）
+        resetBtn.addEventListener('click', () => {
+            try {
+                if (typeof stopSpeaking === 'function') stopSpeaking();
+                if (typeof stopPlayback === 'function') stopPlayback();
+                if (recordBtn && recordBtn.classList && recordBtn.classList.contains('recording')) {
+                    try { if (typeof stopRecording === 'function') stopRecording(true); } catch {}
+                }
+                if (recordBtn && recordBtn.classList) { recordBtn.classList.remove('recording'); recordBtn.textContent = '🎙 开始录音'; }
+                if (recordedAudioUrl) { try { URL.revokeObjectURL(recordedAudioUrl); } catch {} }
+                recordedAudioUrl = null;
+                lastRecordedBlob = null;
+                if (listenBtn) listenBtn.disabled = true;
+                try { if (typeof clearRecordingHighlight === 'function') clearRecordingHighlight(); } catch {}
+                try { if (typeof clearAccuracyHighlights === 'function') clearAccuracyHighlights(); } catch {}
+                try {
+                    __lastScoring = null;
+                    const scoreSection = document.getElementById('scoreSection');
+                    const scoreSummary = document.getElementById('scoreSummary');
+                    const scoreDetails = document.getElementById('scoreDetails');
+                    if (scoreSummary) scoreSummary.textContent = '';
+                    if (scoreDetails) scoreDetails.textContent = '';
+                    if (scoreSection) scoreSection.hidden = true;
+                } catch {}
+            } catch {}
+        });
+        /* DUPLICATE BLOCK REMOVED - mid start
+        // Initialize UI from settings
+        loadSettings();
+        setContentScale(fontSizeTier);
+        render();
+        // 异步升级完整词典并刷新
+        ensureFullDictionary().then(nd => { if (nd) { dict = nd; render(); } });
+        // Enhanced render function
+        function render() {
+            setEyeButton(togglePhoneticBtn, showPhonetic, '音标');
+            updateProgress();
+
+            if (mode === 'full') {
+                singleSection.hidden = true;
+                fullSection.hidden = false;
+                fullSection.innerHTML = '';
+                
+                data.sentences.forEach(sentence => {
+                    const card = document.createElement('div');
+                    card.className = 'sentence-card';
+                    
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'tokens';
+                    
+                    tokenize(sentence).forEach(word => {
+                        wrapper.appendChild(renderToken(word));
+                    });
+                    
+                    card.appendChild(wrapper);
+                    fullSection.appendChild(card);
+                });
+            } else {
+                fullSection.hidden = true;
+                singleSection.hidden = false;
+                pager.textContent = `${currentIndex + 1} / ${data.sentences.length}`;
+                
+                singleTokens.innerHTML = '';
+                tokenize(data.sentences[currentIndex]).forEach(word => {
+                    singleTokens.appendChild(renderToken(word));
+                });
+            }
+            // if recording, re-bind highlight to the new DOM
+            if (recordBtn.classList.contains('recording')) {
+                prepareRecordingHighlight();
+            }
+        }
+
+        // 点击切换模式
+        modeSeg.addEventListener('click', (e) => {
+            const item = e.target.closest('.item');
+            if (!item) return;
+            mode = item.dataset.mode === 'single' ? 'single' : 'full';
+            applyUIState();
+            saveSettings();
+            render();
+        });
+
+        // 切换口音
+        accentSeg.addEventListener('click', (e) => {
+            const item = e.target.closest('.item');
+            if (!item) return;
+            const acc = item.dataset.accent;
+            if (acc === 'us' || acc === 'uk') accent = acc;
+            applyUIState();
+            saveSettings();
+            render();
+        });
+
+        // 切换语速
+        speedSeg.addEventListener('click', (e) => {
+            const item = e.target.closest('.sitem');
+            if (!item) return;
+            const r = parseFloat(item.dataset.rate);
+            if (!Number.isNaN(r)) rate = r;
+            applyUIState();
+            saveSettings();
+        });
+
+        // 切换音标显示
+        togglePhoneticBtn.addEventListener('click', () => {
+            showPhonetic = !showPhonetic;
+            applyUIState();
+            saveSettings();
+            render();
+        });
+
+        // 句子翻页（单句模式）
+        function clampIndex(i){
+            return Math.max(0, Math.min(i, data.sentences.length - 1));
+        }
+        prevBtn && prevBtn.addEventListener('click', () => {
+            if (mode !== 'single') return;
+            currentIndex = clampIndex(currentIndex - 1);
+            saveSettings();
+            render();
+        });
+        nextBtn && nextBtn.addEventListener('click', () => {
+            if (mode !== 'single') return;
+            currentIndex = clampIndex(currentIndex + 1);
+            saveSettings();
+            render();
+        });
+
+        // 键盘导航
+        document.addEventListener('keydown', (e) => {
+            if (mode !== 'single') return;
+            if (e.key === 'ArrowLeft') {
+                e.preventDefault();
+                currentIndex = clampIndex(currentIndex - 1);
+                saveSettings();
+                render();
+            } else if (e.key === 'ArrowRight') {
+                e.preventDefault();
+                currentIndex = clampIndex(currentIndex + 1);
+                saveSettings();
+                render();
+            }
+        });
+
+        // 播放文本
+        playBtn.addEventListener('click', () => {
+            const text = mode === 'single' ? (data.sentences[currentIndex] || '') : data.sentences.join('. ');
+            speakText(text);
+        });
+
+        // 旧的“简易录音按钮”监听器已移除，避免与统一捕获阶段绑定冲突。
+
+        // 重置（仅重置录音/回放与评分状态，不影响模式/音标/英美音等设置）
+        resetBtn.addEventListener('click', () => {
+            try {
+                if (typeof stopSpeaking === 'function') stopSpeaking();
+                if (typeof stopPlayback === 'function') stopPlayback();
+                if (recordBtn && recordBtn.classList && recordBtn.classList.contains('recording')) {
+                    try { if (typeof stopRecording === 'function') stopRecording(true); } catch {}
+                }
+                if (recordBtn && recordBtn.classList) { recordBtn.classList.remove('recording'); recordBtn.textContent = '🎙 开始录音'; }
+                if (recordedAudioUrl) { try { URL.revokeObjectURL(recordedAudioUrl); } catch {} }
+                recordedAudioUrl = null;
+                lastRecordedBlob = null;
+                if (listenBtn) listenBtn.disabled = true;
+                try { if (typeof clearRecordingHighlight === 'function') clearRecordingHighlight(); } catch {}
+                try { if (typeof clearAccuracyHighlights === 'function') clearAccuracyHighlights(); } catch {}
+                try {
+                    __lastScoring = null;
+                    const scoreSection = document.getElementById('scoreSection');
+                    const scoreSummary = document.getElementById('scoreSummary');
+                    const scoreDetails = document.getElementById('scoreDetails');
+                    if (scoreSummary) scoreSummary.textContent = '';
+                    if (scoreDetails) scoreDetails.textContent = '';
+                    if (scoreSection) scoreSection.hidden = true;
+                } catch {}
+            } catch {}
+        });
+        /* DUPLICATE BLOCK REMOVED - start
+        // Token renderer (word + IPA) with click-to-speak
+        function renderToken(word) {
+            const token = document.createElement('div');
+            token.className = 'token';
+            
+            const wordEl = document.createElement('div');
+            wordEl.className = 'word';
+            wordEl.textContent = word;
+            
+            const ipaEl = document.createElement('div');
+            ipaEl.className = 'ipa';
+            const ipaText = getPhonetic(word);
+            ipaEl.textContent = ipaText;
+            ipaEl.dataset.empty = ipaText ? 'false' : 'true';
+            ipaEl.style.display = showPhonetic ? 'block' : 'none';
+            
+            token.appendChild(wordEl);
+            token.appendChild(ipaEl);
+            
+            // Click actions
+            token.addEventListener('click', () => speakWord(word));
+            ipaEl.addEventListener('click', (e) => {
+                e.stopPropagation();
+                speakWord(word);
+            });
+            
+            return token;
+        }
+
+        function updateProgress() {
+            if (mode === 'single') {
+                const progress = ((currentIndex + 1) / data.sentences.length) * 100;
+                progressBar.style.width = `${progress}%`;
+            } else {
+                progressBar.style.width = '100%';
+            }
+        }
+
+        // Enhanced render function
+        function render() {
+            setEyeButton(togglePhoneticBtn, showPhonetic, '音标');
+            togglePhoneticBtn.classList.toggle('toggled', showPhonetic);
+            updateProgress();
+
+            if (mode === 'full') {
+                singleSection.hidden = true;
+                fullSection.hidden = false;
+                fullSection.innerHTML = '';
+                
+                data.sentences.forEach(sentence => {
+                    const card = document.createElement('div');
+                    card.className = 'sentence-card';
+                    
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'tokens';
+                    
+                    tokenize(sentence).forEach(word => {
+                        wrapper.appendChild(renderToken(word));
+                    });
+                    
+                    card.appendChild(wrapper);
+                    fullSection.appendChild(card);
+                });
+            } else {
+                fullSection.hidden = true;
+                singleSection.hidden = false;
+                pager.textContent = `${currentIndex + 1} / ${data.sentences.length}`;
+                
+                singleTokens.innerHTML = '';
+                tokenize(data.sentences[currentIndex]).forEach(word => {
+                    singleTokens.appendChild(renderToken(word));
+                });
+            }
+        }
+                });
+            }
+            // if recording, re-bind highlight to the new DOM
+            if (recordBtn.classList.contains('recording')) {
+                prepareRecordingHighlight();
+            }
+        }
+
+        // 点击切换模式
+        modeSeg.addEventListener('click', (e) => {
+            const item = e.target.closest('.item');
+            if (!item) return;
+            mode = item.dataset.mode === 'single' ? 'single' : 'full';
+            applyUIState();
+            saveSettings();
+            render();
+        });
+
+        // 切换口音
+        accentSeg.addEventListener('click', (e) => {
+            const item = e.target.closest('.item');
+            if (!item) return;
+            const acc = item.dataset.accent;
+            if (acc === 'us' || acc === 'uk') accent = acc;
+            applyUIState();
+            saveSettings();
+            render();
+        });
+
+        // 切换语速
+        speedSeg.addEventListener('click', (e) => {
+            const item = e.target.closest('.sitem');
+            if (!item) return;
+            const r = parseFloat(item.dataset.rate);
+            if (!Number.isNaN(r)) rate = r;
+            applyUIState();
+            saveSettings();
+        });
+
+        // 切换音标显示
+        togglePhoneticBtn.addEventListener('click', () => {
+            showPhonetic = !showPhonetic;
+            applyUIState();
+            saveSettings();
+            render();
+        });
+
+        // 句子翻页（单句模式）
+        function clampIndex(i){
+            return Math.max(0, Math.min(i, data.sentences.length - 1));
+        }
+        prevBtn && prevBtn.addEventListener('click', () => {
+            if (mode !== 'single') return;
+            currentIndex = clampIndex(currentIndex - 1);
+            saveSettings();
+            render();
+        });
+        nextBtn && nextBtn.addEventListener('click', () => {
+            if (mode !== 'single') return;
+            currentIndex = clampIndex(currentIndex + 1);
+            saveSettings();
+            render();
+        });
+
+        // 键盘导航
+        document.addEventListener('keydown', (e) => {
+            if (mode !== 'single') return;
+            if (e.key === 'ArrowLeft') {
+                e.preventDefault();
+                currentIndex = clampIndex(currentIndex - 1);
+                saveSettings();
+                render();
+            } else if (e.key === 'ArrowRight') {
+                e.preventDefault();
+                currentIndex = clampIndex(currentIndex + 1);
+                saveSettings();
+                render();
+            }
+        });
+
+        // 播放文本
+        playBtn.addEventListener('click', () => {
+            const text = mode === 'single' ? (data.sentences[currentIndex] || '') : data.sentences.join('. ');
+            speakText(text);
+        });
+
+        // 旧的“简易录音按钮”监听器已移除，避免与统一捕获阶段绑定冲突。
+
+        // 重置（仅重置录音/回放与评分状态，不影响模式/音标/英美音等设置）
+        resetBtn.addEventListener('click', () => {
+            try {
+                if (typeof stopSpeaking === 'function') stopSpeaking();
+                if (typeof stopPlayback === 'function') stopPlayback();
+                if (recordBtn && recordBtn.classList && recordBtn.classList.contains('recording')) {
+                    try { if (typeof stopRecording === 'function') stopRecording(true); } catch {}
+                }
+                if (recordBtn && recordBtn.classList) { recordBtn.classList.remove('recording'); recordBtn.textContent = '🎙 开始录音'; }
+                if (recordedAudioUrl) { try { URL.revokeObjectURL(recordedAudioUrl); } catch {} }
+                recordedAudioUrl = null;
+                lastRecordedBlob = null;
+                if (listenBtn) listenBtn.disabled = true;
+                try { if (typeof clearRecordingHighlight === 'function') clearRecordingHighlight(); } catch {}
+                try { if (typeof clearAccuracyHighlights === 'function') clearAccuracyHighlights(); } catch {}
+                try {
+                    __lastScoring = null;
+                    const scoreSection = document.getElementById('scoreSection');
+                    const scoreSummary = document.getElementById('scoreSummary');
+                    const scoreDetails = document.getElementById('scoreDetails');
+                    if (scoreSummary) scoreSummary.textContent = '';
+                    if (scoreDetails) scoreDetails.textContent = '';
+                    if (scoreSection) scoreSection.hidden = true;
+                } catch {}
+            } catch {}
+        });
+        /* DUPLICATE BLOCK REMOVED - mid end */
+        // 语音合成与录音/回放控制（互斥 + 按钮状态）
+        let __voices = [];
+        function preloadVoices() {
+            try {
+                __voices = window.speechSynthesis ? window.speechSynthesis.getVoices() : [];
+                if (window.speechSynthesis && (!__voices || __voices.length === 0)) {
+                    window.speechSynthesis.addEventListener('voiceschanged', () => {
+                        __voices = window.speechSynthesis.getVoices();
+                    }, { once: true });
+                }
+            } catch {}
+        }
+        preloadVoices();
+        function pickVoiceByAccent(acc) {
+            if (!__voices || __voices.length === 0) return null;
+            const prefer = acc === 'uk' ? ['en-GB', 'UK', 'British'] : ['en-US', 'US', 'American'];
+            // 用户性别偏好（基于名称包含 Female/Male 或常见 TTS 名）
+            const prefName = acc === 'uk' ? (voiceChoiceUK || 'UK-Female') : (voiceChoiceUS || 'US-Female');
+            const wantMale = /Male/i.test(prefName);
+            const wantFemale = /Female/i.test(prefName);
+            // 先按口音+性别匹配
+            let match = __voices.find(v => {
+                const okAccent = prefer.some(k => (v.lang && v.lang.includes(k)) || (v.name && v.name.includes(k)));
+                if (!okAccent) return false;
+                const nm = (v.name || '') + ' ' + (v.lang || '');
+                if (wantMale) return /male|guy|david|george|ben|dan/i.test(nm);
+                if (wantFemale) return /female|susan|sara|lisa|emma|amy|sophie|victoria|kate|eva/i.test(nm);
+                return true;
+            });
+            // 回退：仅按口音
+            if (!match) match = __voices.find(v => prefer.some(k => (v.lang && v.lang.includes(k)) || (v.name && v.name.includes(k))));
+            // 回退：任意英文
+            return match || __voices.find(v => (v.lang || '').startsWith('en')) || __voices[0] || null;
+        }
+
+        // 状态与资源
+        let isSpeaking = false;
+        let isReplaying = false;
+        let playbackAudio = null;
+        let recordedAudioUrl = null;
+        let mediaStream = null;
+let mediaRecorder = null;
+let recordedChunks = [];
+// 录音与实时语音门控（VAD）状态
+let __recorderMime = null;
+let __vadAC = null, __vadAnalyser = null, __vadSource = null, __vadTimer = null;
+window.__vadSpeaking = undefined;
+
+function pickRecorderMime(){
+    try{
+        if (typeof MediaRecorder === 'undefined') return null;
+        const candidates = [
+            'audio/webm;codecs=opus',
+            'audio/ogg;codecs=opus',
+            'audio/webm',
+            'audio/ogg',
+            'audio/mp4'
+        ];
+        for (const t of candidates){
+            try { if (MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(t)) return t; } catch {}
+        }
+    }catch{}
+    return null;
+}
+function startVAD(stream){
+    try{
+        const AC = window.AudioContext || window.webkitAudioContext;
+        __vadAC = new AC({ latencyHint: 'interactive' });
+        __vadSource = __vadAC.createMediaStreamSource(stream);
+        __vadAnalyser = __vadAC.createAnalyser();
+        __vadAnalyser.fftSize = 1024;
+        __vadAnalyser.smoothingTimeConstant = 0.8;
+        __vadSource.connect(__vadAnalyser);
+        const data = new Uint8Array(__vadAnalyser.fftSize);
+        let lastSpeakTs = 0;
+        window.__vadSpeaking = false;
+        try { if (window.__blueTracker) window.__blueTracker.setSpeaking(false); } catch {}
+        if (__vadTimer) { try { clearInterval(__vadTimer); } catch{} }
+        __vadTimer = setInterval(()=>{
+            try{
+                if (!__vadAnalyser) return;
+                __vadAnalyser.getByteTimeDomainData(data);
+                let sum=0;
+                for(let i=0;i<data.length;i++){
+                    const v = (data[i]-128)/128; // [-1,1]
+                    sum += v*v;
+                }
+                const rms = Math.sqrt(sum/data.length);
+                const now = Date.now();
+                const speaking = rms > 0.03; // 经验阈值，防静默推进
+                if (speaking) lastSpeakTs = now;
+                // 加入保持时间，避免卡顿
+                window.__vadSpeaking = (now - lastSpeakTs) < 250;
+                try { if (window.__blueTracker) window.__blueTracker.setSpeaking(window.__vadSpeaking); } catch {}
+            }catch{}
+        }, 50);
+    }catch(e){ console.warn('VAD init failed', e); }
+}
+function stopVAD(){
+    try{
+        if (__vadTimer){ try { clearInterval(__vadTimer); } catch{} __vadTimer = null; }
+        window.__vadSpeaking = false;
+        try { if (window.__blueTracker) window.__blueTracker.setSpeaking(false); } catch {}
+        if (__vadSource){ try{ __vadSource.disconnect(); } catch{} __vadSource = null; }
+        if (__vadAnalyser){ try{ __vadAnalyser.disconnect(); } catch{} __vadAnalyser = null; }
+        if (__vadAC){ try{ __vadAC.close(); } catch{} __vadAC = null; }
+    }catch{}
+}
+        let lastRecordedBlob = null;
+        let __lastScoring = null; // { feats, wordCount, tips, advProxy, advReal, werInfo }
+        let __scoreMode = 'basic'; // 'basic' | 'proxy' | 'real'
+
+        function updatePlayBtn(playing){
+            playBtn.classList.toggle('playing', playing);
+            playBtn.textContent = playing ? '⏹ 正在朗读' : '▶ 播放';
+        }
+        function updateListenBtn(playing){
+            listenBtn.classList.toggle('playing', playing);
+            listenBtn.textContent = playing ? '⏹ 正在回放' : '👂 听听回放';
+        }
+        function stopSpeaking(){
+            if (window.speechSynthesis) { try { window.speechSynthesis.cancel(); } catch{} }
+            if (isSpeaking){ isSpeaking = false; updatePlayBtn(false); }
+        }
+        function stopPlayback(){
+            if (playbackAudio){ try { playbackAudio.pause(); playbackAudio.currentTime = 0; } catch{} }
+            if (isReplaying){ isReplaying = false; updateListenBtn(false); }
+        }
+        async function startRecording(){
+                    stopSpeaking();
+                    stopPlayback();
+                    window.__asrCoverage = null;
+                    try { if (window.__blueClearTimer) { clearTimeout(window.__blueClearTimer); window.__blueClearTimer = null; } } catch {}
+                    try {
+                        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw new Error('getUserMedia not supported');
+                        mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                        // 启动实时语音门控
+                        startVAD(mediaStream);
+                        recordedChunks = [];
+                        __recorderMime = pickRecorderMime();
+                        mediaRecorder = __recorderMime ? new MediaRecorder(mediaStream, { mimeType: __recorderMime }) : new MediaRecorder(mediaStream);
+                        mediaRecorder.ondataavailable = (e)=>{ if (e.data && e.data.size) recordedChunks.push(e.data); };
+                        mediaRecorder.onstop = ()=>{
+                            try {
+                                if (recordedChunks.length){
+                                    const blobType = __recorderMime || 'audio/webm';
+                                    const blob = new Blob(recordedChunks, { type: blobType });
+                                    lastRecordedBlob = blob;
+                                    if (recordedAudioUrl) { try { URL.revokeObjectURL(recordedAudioUrl); } catch{} }
+                                    recordedAudioUrl = URL.createObjectURL(blob);
+                                    if (listenBtn) listenBtn.disabled = false;
+                                    try { window.__asrCoverage = __computeCoverageFromRecHL(); } catch {}
+                                    if (typeof scoringEnabled === 'undefined' || scoringEnabled) {
+                                        if (!window.__scoringBusy) computeAndRenderScore(blob);
+                                    }
+                                }
+                            } catch (e) { console.warn('onstop scoring error', e); }
+                            if (mediaStream){ mediaStream.getTracks().forEach(t=>t.stop()); mediaStream = null; }
+                            stopVAD();
+                        };
+                        mediaRecorder.start();
+                        recordBtn.classList.add('recording');
+                        recordBtn.textContent = '■ 停止录音';
+                        if (listenBtn) listenBtn.disabled = true;
+                        prepareRecordingHighlight && prepareRecordingHighlight();
+                    } catch (err) {
+                        recordBtn.classList.add('recording');
+                        recordBtn.textContent = '■ 停止录音';
+                        try { prepareRecordingHighlight && prepareRecordingHighlight(); } catch {}
+                    }
+                }
+        function stopRecording(preserve=true){
+            try {
+                if (mediaRecorder && mediaRecorder.state !== 'inactive'){ mediaRecorder.stop(); }
+                if (mediaStream){ mediaStream.getTracks().forEach(t=>t.stop()); mediaStream = null; }
+            } catch {}
+            try { stopVAD(); } catch {}
+            recordBtn.classList.remove('recording');
+            recordBtn.textContent = '🎙 开始录音';
+            // 停止识别/计时但保留蓝色，若不保留则立即清蓝
+            try { stopRecHighlightEnginesPreserve && stopRecHighlightEnginesPreserve(); } catch {}
+            if (!preserve) {
+                try { clearRecordingHighlight && clearRecordingHighlight(); } catch {}
+            } else {
+                try { scheduleBlueClear && scheduleBlueClear(5000, true); } catch {}
+            }
+            if (listenBtn) listenBtn.disabled = !recordedAudioUrl;
+            // 如果没有录到音频，显示评分区提示
+            try {
+                const hasAudio = !!(recordedAudioUrl || (recordedChunks && recordedChunks.length));
+                if (!hasAudio) {
+                    const scoreSection = document.getElementById('scoreSection');
+                    const scoreSummary = document.getElementById('scoreSummary');
+                    const scoreDetails = document.getElementById('scoreDetails');
+                    if (scoreSection) scoreSection.hidden = false;
+                    const scoringOff = (typeof scoringEnabled !== 'undefined' && !scoringEnabled);
+                    if (scoreSummary) {
+                        scoreSummary.textContent = scoringOff ? '评分功能已关闭，如需请打开顶部评分按钮' : '暂无录音，无法评分';
+                        scoreSummary.style.color = scoringOff ? '#C4C4C4' : '';
+                    }
+                    if (scoreDetails) scoreDetails.textContent = scoringOff ? '' : '请允许麦克风权限并重试。';
+                }
+            } catch {}
+        }
+
+        function speakText(txt) {
+            if (!txt || !window.speechSynthesis || typeof SpeechSynthesisUtterance === 'undefined') return;
+            const u = new SpeechSynthesisUtterance(txt);
+            const v = pickVoiceByAccent(accent);
+            if (v) u.voice = v;
+            u.rate = rate || 1;
+            u.onstart = () => { isSpeaking = true; updatePlayBtn(true); };
+            const finalize = () => { isSpeaking = false; updatePlayBtn(false); };
+            u.onend = finalize;
+            u.onerror = finalize;
+            try { window.speechSynthesis.cancel(); } catch {}
+            window.speechSynthesis.speak(u);
+        }
+        function speakWord(word) { speakText(word); }
+
+        // 统一绑定（捕获阶段拦截，避免重复绑定和旧监听冲突）
+        if (!window.__boundControls) {
+            // 播放按钮：切换播放/停止，且与录音、回放互斥
+            playBtn.addEventListener('click', (e) => {
+                e.preventDefault(); e.stopImmediatePropagation();
+                const text = mode === 'single' ? (data.sentences[currentIndex] || '') : data.sentences.join('. ');
+                if (isSpeaking) { stopSpeaking(); return; }
+                // 互斥：停止录音与回放
+                if (recordBtn.classList.contains('recording')) stopRecording(true);
+                stopPlayback();
+                speakText(text);
+            }, { capture: true });
+
+            // 录音按钮：切换录音，且与播放、回放互斥；停止时保留片段
+            recordBtn.addEventListener('click', (e) => {
+                e.preventDefault(); e.stopImmediatePropagation();
+                if (recordBtn.classList.contains('recording')) {
+                    stopRecording(true);
+                } else {
+                    stopSpeaking();
+                    stopPlayback();
+                    startRecording();
+                }
+            }, { capture: true });
+
+            // 回放按钮：回放已录音；与播放、录音互斥；再次点击则停止回放
+            listenBtn && listenBtn.addEventListener('click', (e) => {
+                e.preventDefault(); e.stopImmediatePropagation();
+                if (listenBtn.disabled) return;
+                if (isReplaying) { stopPlayback(); return; }
+                stopSpeaking();
+                if (recordBtn.classList.contains('recording')) stopRecording(true);
+                if (!recordedAudioUrl) return;
+                try {
+                    if (playbackAudio) { try { playbackAudio.pause(); } catch{} }
+                    playbackAudio = new Audio(recordedAudioUrl);
+                    playbackAudio.onplaying = () => { isReplaying = true; updateListenBtn(true); };
+                    const done = () => { stopPlayback(); };
+                    playbackAudio.onended = done;
+                    playbackAudio.onpause = done;
+                    playbackAudio.onerror = done;
+                    playbackAudio.play();
+                } catch {
+                    // 如果回放失败，恢复按钮
+                    stopPlayback();
+                }
+            }, { capture: true });
+
+            window.__boundControls = true;
+        }
+        
+        // ===== 评分实现：不依赖大模型（纯前端） =====
+        // 工具函数
+        function clamp(x, a, b){ return Math.max(a, Math.min(b, x)); }
+        function mean(arr){ if(!arr.length) return 0; return arr.reduce((s,x)=>s+x,0)/arr.length; }
+        function std(arr){ if(arr.length<2) return 0; const m=mean(arr); return Math.sqrt(mean(arr.map(x=>(x-m)*(x-m)))); }
+        function median(arr){ if(!arr.length) return 0; const s=[...arr].sort((a,b)=>a-b); const mid=Math.floor(s.length/2); return (s.length%2)?s[mid]:(s[mid-1]+s[mid])/2; }
+        function percentile(arr, p){ if(!arr.length) return 0; const s=[...arr].sort((a,b)=>a-b); const idx=Math.max(0,Math.min(s.length-1,Math.floor(s.length*p/100))); return s[idx]; }
+        function preEmphasis(x, a=0.97){ const y=new Float32Array(x.length); y[0]=x[0]; for(let i=1;i<x.length;i++){ y[i]=x[i]-a*x[i-1]; } return Array.from(y); }
+        function frame(arr, size, hop){ const out=[]; for(let i=0;i+size<=arr.length;i+=hop){ out.push(arr.slice(i,i+size)); } return out; }
+        function normalize(arr){
+    // 避免在超长数组上使用扩展运算符，防止“Maximum call stack size exceeded”
+    const n = arr.length | 0;
+    let mx = 0;
+    for (let i = 0; i < n; i++) {
+        const v = arr[i];
+        const ab = v < 0 ? -v : v;
+        if (ab > mx) mx = ab;
+    }
+    const denom = Math.max(1e-12, mx);
+    const g = 1 / denom;
+    if (ArrayBuffer.isView(arr)) {
+        const out = new Float32Array(n);
+        for (let i = 0; i < n; i++) out[i] = arr[i] * g;
+        return out;
+    } else {
+        const out = new Array(n);
+        for (let i = 0; i < n; i++) out[i] = arr[i] * g;
+        return out;
+    }
+}
+        // FAC helpers
+        function clamp01(x){ return Math.max(0, Math.min(1, x)); }
+        function lin(x, lo, hi){ return clamp01((x - lo) / (hi - lo)); }
+        function sig(x, c=0, k=1){ return 1/(1+Math.exp(-k*(x-c))); }
+        function resampleLinear(input, fromSr, toSr){ if(fromSr===toSr) return input.slice(); const ratio = toSr/fromSr; const n = Math.floor(input.length*ratio); const out = new Float32Array(n); for(let i=0;i<n;i++){ const src = i/ratio; const j = Math.floor(src); const t = src - j; const a = input[j] || 0; const b = input[j+1] || 0; out[i] = a*(1-t) + b*t; } return Array.from(out); }
+        function zeroCrossRate(arr){ let c=0; for(let i=1;i<arr.length;i++){ if((arr[i-1] <= 0 && arr[i] > 0) || (arr[i-1] >= 0 && arr[i] < 0)) c++; } return c/arr.length; }
+        function consecutiveRuns(bools){ let maxRun=0,cur=0; for(const b of bools){ if(b){ cur++; maxRun=Math.max(maxRun,cur);} else { cur=0;} } return maxRun; }
+        // ACF 基础 F0 估计（简单稳健版）
+        function estimateF0ACF(frame, sr, fmin=70, fmax=400){
+            const n=frame.length; if(n<8) return { f0: 0, r: 0 };
+            const lo = Math.max(1, Math.floor(sr/fmax));
+            const hi = Math.min(n-2, Math.floor(sr/fmin));
+            let bestLag=0, bestR=-1;
+            const m = mean(frame);
+            const x = frame.map(v=>v-m);
+            for(let tau=lo; tau<=hi; tau++){
+                let num=0, denom2=0, denom3=0;
+                for(let i=0;i<n-tau;i++){ const a=x[i], b=x[i+tau]; num += a*b; denom2 += a*a; denom3 += b*b; }
+                const r = num / Math.sqrt((denom2||1e-9)*(denom3||1e-9));
+                if(r>bestR){ bestR=r; bestLag=tau; }
+            }
+            const f0 = (bestLag>0) ? (sr/bestLag) : 0;
+            const ok = (f0>=fmin && f0<=fmax) ? f0 : 0;
+            return { f0: ok, r: clamp01(bestR) };
+        }
+        async function decodeToPCM(blob){
+            const AC = window.AudioContext || window.webkitAudioContext;
+            const ac = new AC({ sampleRate: 44100 });
+            const buf = await blob.arrayBuffer();
+            let audioBuf = null;
+            try {
+                const maybePromise = ac.decodeAudioData(buf);
+                if (maybePromise && typeof maybePromise.then === 'function') {
+                    // Promise 风格（Chromium 等）
+                    audioBuf = await maybePromise;
+                } else {
+                    // Callback 风格（部分 Firefox 版本等）
+                    audioBuf = await new Promise((resolve, reject) => ac.decodeAudioData(buf, resolve, reject));
+                }
+            } catch (e) {
+                try {
+                    // 再次尝试 Callback 风格，兼容某些仅支持回调的实现
+                    audioBuf = await new Promise((resolve, reject) => ac.decodeAudioData(buf, resolve, reject));
+                } catch (e2) {
+                    console.warn('decodeAudioData failed', e, e2);
+                    try { ac.close(); } catch {}
+                    // 兜底：返回空 PCM，避免后续流程崩溃
+                    return { pcm: [], sr: 16000 };
+                }
+            }
+            const ch0raw = (audioBuf.numberOfChannels > 0) ? audioBuf.getChannelData(0) : new Float32Array(audioBuf.length || 0);
+            const ch0 = preEmphasis(ch0raw, 0.97);
+            const sr = audioBuf.sampleRate || 44100;
+            try { ac.close(); } catch {}
+            return { pcm: Array.from(ch0), sr };
+        }
+        function computeDurationsFromTokens(){
+            // 估计目标词时长：根据字符数与语速粗略分配（仅用于无 ASR 粗略对齐）
+            const container = (mode === 'single') ? (singleTokens || document) : (fullSection || document);
+            const tokens = Array.from(container.querySelectorAll('.token .word'));
+            const words = tokens.map(el => (el.textContent||'').trim()).filter(Boolean);
+            const chars = words.map(w=>w.replace(/[^A-Za-z']/g,'').length || 1);
+            const totalChars = chars.reduce((s,x)=>s+x,0);
+            // 按模式区分阅读目标：单句更快(≈2.0 词/秒)，全篇≈1.3 词/秒；并区分最小时长夹紧
+            const readWpsTarget = (mode === 'single') ? 2.0 : 1.3;
+            const baseTime = words.length * (1.0 / (readWpsTarget * (rate||1)));
+            const minClamp = (mode === 'single') ? 0.5 : 1.8;
+            const totalTime = clamp(baseTime, minClamp, 60);
+            const per = chars.map(c => totalTime * (c/Math.max(1,totalChars)));
+            return { words, perWordSec: per };
+        }
+        function vadSegments(pcm, sr){
+            // 简单能量阈值+ZCR VAD
+            const win = Math.floor(0.03*sr), hop = Math.floor(0.015*sr);
+            const frames = frame(pcm, win, hop);
+            const energies = frames.map(fr=>mean(fr.map(x=>x*x)));
+            const zcrs = frames.map(fr=>zeroCrossRate(fr));
+            const eMed = median(energies);
+            const zThr = 0.25;
+            const voiced = frames.map((fr,i)=> (energies[i] > eMed*3 && zcrs[i] < 0.35) || (energies[i] > eMed*0.6 && zcrs[i] < zThr));
+            // 合并为时间段
+            const segs=[]; let cur=null;
+            for(let i=0;i<voiced.length;i++){
+                const start = i*hop; const end = start+win;
+                if(voiced[i]){
+                    if(!cur) cur = { start, end };
+                    else cur.end = end;
+                }else{
+                    if(cur){ segs.push(cur); cur=null; }
+                }
+            }
+            if(cur) segs.push(cur);
+            // 过短段落丢弃
+            const minLen = Math.floor(0.08*sr);
+            return segs.filter(s=> (s.end - s.start) >= minLen);
+        }
+        function computeFeatures(pcm, sr){
+            const x = normalize(pcm);
+            // VAD 切分
+            const segs = vadSegments(x, sr);
+            const voicedLen = segs.reduce((s,g)=>s+(g.end-g.start),0);
+            const voicedSec = voicedLen/sr;
+            const totalSec = x.length/sr;
+            const gapsSec = Math.max(0, totalSec - voicedSec);
+            // 计算 RMS 与 F0
+            const win = Math.floor(0.04*sr), hop = Math.floor(0.02*sr);
+            const frames = frame(x, win, hop);
+            // 避免对超长帧数组使用 .map 的回调开销和潜在的调用栈问题
+            const rmss = new Array(frames.length);
+            for (let i=0;i<frames.length;i++){
+                const fr = frames[i];
+                let acc = 0; for (let j=0;j<fr.length;j++){ const v = fr[j]; acc += v*v; }
+                rmss[i] = Math.sqrt(acc/Math.max(1,fr.length));
+            }
+            const f0s = new Array(frames.length);
+            const f0rs = new Array(frames.length);
+            for (let i=0;i<frames.length;i++){
+                const fr = estimateF0ACF(frames[i], sr, 80, 350);
+                f0s[i] = fr.f0 || 0;
+                f0rs[i] = fr.r || 0;
+            }
+            const f0Valid = f0s.filter(f=>f>50 && f<400);
+            const f0PctValid = f0Valid.length/Math.max(1,f0s.length);
+            const f0Median = median(f0Valid);
+            const f0RMean = mean(f0rs);
+            const rmsMean = mean(rmss);
+            const rmsStd = std(rmss);
+            // Long pause count (gaps >= 2.0s) between voiced segments, and track max pause
+            let longPauseCount = 0;
+            let maxPauseSec = 0;
+            for (let i=1;i<segs.length;i++){
+                const gapSamp = segs[i].start - segs[i-1].end;
+                const gapSec = gapSamp/ sr;
+                if (gapSec >= 2.0) longPauseCount++;
+                if (gapSec > maxPauseSec) maxPauseSec = gapSec;
+            }
+            // Max voiced segment duration (proxy for per-word duration upper bound)
+            let maxVoicedSegSec = 0;
+            for (let i=0;i<segs.length;i++){
+                const dur = (segs[i].end - segs[i].start)/sr;
+                if (dur > maxVoicedSegSec) maxVoicedSegSec = dur;
+            }
+            return { voicedSec, gapsSec, rmsMean, rmsStd, f0Median, f0PctValid, totalSec, longPauseCount, maxPauseSec, maxVoicedSegSec };
+        }
+        function scoreFromFeatures(features){
+            // 根据“稳定性、连贯性、音量、音高范围”给出 0-100 分
+            const { voicedSec, gapsSec, rmsMean, rmsStd, f0Median, f0PctValid } = features;
+            // 稳定性：音量方差小更好
+            const stability = clamp(1 - clamp(rmsStd/(rmsMean+1e-6), 0, 1), 0, 1);
+            // 连贯性：停顿比例不要太高
+            const speechRatio = voicedSec/(voicedSec + gapsSec + 1e-6);
+            const coherence = clamp((speechRatio - 0.4)/0.5, 0, 1); // 0.4-0.9 线性
+            // 音量：适中最好（目标均值 ~ -12dBFS => 0.25 RMS）
+            const volTarget = 0.25, volScore = 1 - Math.abs(rmsMean - volTarget)/0.25; // 偏差 0.25 记满扣
+            const volume = clamp(volScore, 0, 1);
+            // 音高检测成功率
+            const pitch = clamp(f0PctValid, 0, 1);
+            // 汇总
+            const raw = 0.35*stability + 0.3*coherence + 0.2*volume + 0.15*pitch;
+            return Math.round(clamp(raw,0,1)*100);
+        }
+        // FAC 评分器（确定性）
+        function computeFACFromSignals(sig){
+            const totalSec = Math.max(1e-6, Number(sig.totalSec||0));
+            const voicedSec = Math.max(0, Number(sig.voicedSec||0));
+            const gapsSec = Math.max(0, Number(sig.gapsSec||0));
+            const speechRatio = voicedSec/(voicedSec + gapsSec + 1e-6);
+            const longPauseCount = Math.max(0, Number(sig.longPauseCount||0));
+            const pMax = (typeof sig.maxPauseSec === 'number') ? Number(sig.maxPauseSec) : 0;
+            let pausePenalty = clamp01(1 - longPauseCount*0.18);
+            if (pMax > 1.2) pausePenalty = clamp01(pausePenalty - Math.min(0.4, (pMax - 1.2) * 0.25));
+            let rateScore = 0.7;
+            if (typeof sig.rateWps === 'number' && isFinite(sig.rateWps)){
+                // 更宽松的语速容忍区间，目标约 1.0 词/秒
+                rateScore = clamp01(1 - Math.abs(sig.rateWps - 1.0)/1.2);
+            }
+            // 语音稳定度（用于“卡壳”近似判断）
+            const stb = clamp01(1 - (Number(sig.rmsStd||0))/((Number(sig.rmsMean||0))+1e-6));
+            // 收紧“硬条件流利”：无重复、无长停顿、最大停顿<1.5s、逐词时长<=1.2s
+            const repeats = Math.max(0, Number(sig.repeatsCount||0));
+            const maxWordSec = Number(sig.maxWordSec || sig.maxVoicedSegSec || 0);
+            const meetsHardFluent = (repeats===0) && (longPauseCount===0) && (pMax>0 ? pMax < 1.5 : true) && (maxWordSec>0 ? (maxWordSec<=1.2) : true);
+            const cov = (typeof sig.coveragePct === 'number' && isFinite(sig.coveragePct)) ? Number(sig.coveragePct) : null;
+            let flu;
+            if (meetsHardFluent && cov != null && cov >= 95){
+                // 读得完整并满足更严格硬条件
+                flu = 1;
+            } else {
+                // 软评分：连贯性、停顿、语速、逐词时长与重复共同决定（增强惩罚）
+                const repeatScore = clamp01(1 - repeats*0.25);
+                let wordDurScore = 1;
+                if (maxWordSec>0) {
+                    const over = Math.max(0, maxWordSec - 1.2);
+                    wordDurScore = clamp01(1 - over/1.2);
+                }
+                const continuity = clamp01(lin(speechRatio,0.4,0.9));
+                const soft = 0.30*continuity + 0.28*pausePenalty + 0.12*rateScore + 0.18*wordDurScore + 0.12*repeatScore;
+                flu = clamp01(soft);
+            }
+            const stability = stb;
+            const voicing = clamp01(Number(sig.f0PctValid||0));
+            let acc;
+            if (typeof sig.phScore === 'number' && isFinite(sig.phScore)) {
+                acc = clamp01(sig.phScore / 100);
+            } else {
+                // 按照修复方案1045：仅基于稳定度与成音比例估计准确度，并加入高质量门控
+                let accBase = 0.6 * stability + 0.4 * voicing;   // 与覆盖率无关
+                if (stability > 0.85 && voicing > 0.6) accBase = Math.max(accBase, 0.90);
+                acc = clamp01(accBase);
+            }
+            // 完整度：以“读出单词比例”为主；若读全且最大停顿<2s，则给到100分
+            let comp;
+            if (typeof sig.coveragePct === 'number' && isFinite(sig.coveragePct)) {
+                comp = clamp01(Number(sig.coveragePct)/100);
+                if (comp >= 0.999) {
+                    const mx = (typeof sig.maxPauseSec === 'number') ? sig.maxPauseSec : null;
+                    if (mx != null && mx >= 2.0) {
+                        // 读全但存在>=2s停顿，不记满分，轻微扣分
+                        comp = 0.98;
+                    }
+                }
+            } else {
+                comp = clamp01(lin(speechRatio, 0.5, 0.95));
+            }
+            const F = Math.round(flu*100);
+            const A = Math.round(acc*100);
+            const C = Math.round(comp*100);
+            const overall = Math.round((F + A + C) / 3);
+            return { overall, fluency: F, accuracy: A, completeness: C, weakPhonemes: Array.isArray(sig.weakPhonemes)?sig.weakPhonemes:[] };
+        }
+
+        // ===== ORT-Web + sherpa-onnx 可选 GOP 管线（占位 + 纯前端实现） =====
+        let __ortReady = false; let __phonemeDict = null; let __phonemeDictLoading = null;
+        async function ensureORT(){
+            if (window.ort) { __ortReady = true; return true; }
+            try{
+                await new Promise((resolve, reject)=>{
+                    const s=document.createElement('script');
+                    s.src='https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.min.js';
+                    s.onload=resolve; s.onerror=reject; document.head.appendChild(s);
+                });
+                __ortReady = !!window.ort; return __ortReady;
+            }catch{ return false; }
+        }
+        // ===== CTC 会话与真实 GOP（最小可用实现，若模型不可用将自动回退） =====
+        const __CTC_MODEL_CANDIDATES = [
+            // 推荐：NeMo 英文 CTC（单文件 int8 + tokens），便于 ORT-Web 前端推理
+            { base: '../public/models/sherpa-onnx-nemo-parakeet_tdt_ctc_110m-en-36000-int8', model: 'model.int8.onnx', tokens: 'tokens.txt', type: 'nemo_ctc' },
+            // 预留：zipformer-ctc（若你放入对应目录，可被识别）
+            { base: '../public/models/sherpa-onnx-zipformer-ctc-en-2023-06-26', model: 'model.onnx', tokens: 'tokens.txt', type: 'zipformer_ctc' },
+        ];
+        const __ctcCtx = { ready: false, session: null, modelType: null, tokens: [], token2id: new Map(), blankId: 0, modelUrl: null, tokensUrl: null };
+        function __guessProviders(){
+            const prov = [];
+            try{ if (ort && ort.env && ort.env.webgpu && typeof navigator !== 'undefined'){ prov.push('webgpu'); } }catch{}
+            prov.push('wasm');
+            return prov;
+        }
+        async function __fetchTextSafe(url){ try{ const r = await fetch(url); if(!r.ok) return null; return await r.text(); }catch{ return null; } }
+        async function __ensureCTCArtifacts(){
+            // 已经就绪
+            if (__ctcCtx.tokensUrl && __ctcCtx.modelUrl) return __ctcCtx;
+            for (const c of __CTC_MODEL_CANDIDATES){
+                const tUrl = `${c.base}/${c.tokens}`; const txt = await __fetchTextSafe(tUrl);
+                if (!txt) continue;
+                // 解析 tokens.txt => 每行格式: "token id"
+                const lines = txt.split(/\r?\n/).filter(Boolean);
+                const pairs = lines.map(l=>l.trim().split(/\s+/)).filter(a=>a.length>=2);
+                const token2id = new Map(); let maxId = -1;
+                for (const a of pairs){ const tok = a[0]; const id = parseInt(a[1],10); if (Number.isFinite(id)){ token2id.set(tok,id); if (id>maxId) maxId=id; } }
+                if (maxId < 0) continue;
+                const tokensById = Array.from({length:maxId+1}, (_,i)=>null);
+                for (const [tok,id] of token2id){ tokensById[id]=tok; }
+                // 常见 blank: <blk> / <blank> / [blank]
+                let blankId = ([...token2id.entries()].find(([t])=>t==='<'+'blk'+'>' || t==='<'+'blank'+'>' || t==='[blank]')||[])[1];
+                if (blankId==null) blankId = 0;
+                __ctcCtx.tokens = tokensById; __ctcCtx.token2id = token2id; __ctcCtx.blankId = blankId; __ctcCtx.modelType = c.type;
+                __ctcCtx.tokensUrl = tUrl; __ctcCtx.modelUrl = `${c.base}/${c.model}`;
+                // 为贪心分词准备按长度降序的词表（过滤特殊符号）
+                __ctcCtx.sortedTokens = Array.from(token2id.keys()).filter(t=>!t.startsWith('<')).sort((a,b)=>b.length-a.length);
+                return __ctcCtx;
+            }
+            return null;
+        }
+        function __softmaxLogits2LogProbs(logits){
+            // logits: Float32Array [T,V] 或 [V,T] 均支持（按 [T,V] 处理，必要时转置）
+            const T = logits.T || 0, V = logits.V || 0; // 允许携带元信息
+            if (!T || !V) return null;
+            const out = new Float32Array(T*V); out.T=T; out.V=V;
+            for (let t=0; t<T; t++){
+                let maxv=-1e30; for (let v=0; v<V; v++){ const x = logits[t*V+v]; if (x>maxv) maxv=x; }
+                let sum=0; for (let v=0; v<V; v++){ sum += Math.exp(logits[t*V+v]-maxv); }
+                const lsum = Math.log(sum) + maxv;
+                for (let v=0; v<V; v++){ out[t*V+v] = logits[t*V+v] - lsum; }
+            }
+            return out;
+        }
+        async function ensureCTCSession(){
+            if (__ctcCtx.session) return __ctcCtx;
+            const ok = await ensureORT(); if (!ok) return null;
+            const art = await __ensureCTCArtifacts(); if (!art) return null;
+            try{
+                __ctcCtx.session = await ort.InferenceSession.create(art.modelUrl, { executionProviders: __guessProviders() });
+                __ctcCtx.ready = true; return __ctcCtx;
+            }catch(e){ console.warn('CTC session create failed:', e); return null; }
+        }
+        function __normalizePCM(pcm){
+            // 输入可能是 Float32 [-1,1]，也可能是 Int16 数组（-32768..32767）
+            let out;
+            // 判定是否像整型幅度：取若干采样估算最大绝对值
+            let mxAbs = 0; const step = Math.max(1, Math.floor(pcm.length/64));
+            for (let i=0;i<pcm.length;i+=step){ const a = Math.abs(pcm[i]); if (a>mxAbs) mxAbs=a; }
+            if (mxAbs > 2){
+                // 视为整型幅度，缩放到 [-1,1]
+                out = new Float32Array(pcm.length);
+                for (let i=0;i<pcm.length;i++){ out[i] = pcm[i] / 32768; }
+            } else {
+                // 视为已是 [-1,1]
+                out = new Float32Array(pcm);
+            }
+            // 归一化到峰值 0.95，避免溢出
+            let mx=0; for(let i=0;i<out.length;i++){ const a=Math.abs(out[i]); if(a>mx) mx=a; }
+            const g = mx>0? 0.95/mx : 1; if (g!==1){ for(let i=0;i<out.length;i++) out[i]*=g; }
+            return out;
+        }
+        async function __runCTC(pcm16k){
+            const ctx = await ensureCTCSession(); if (!ctx || !ctx.session) return null;
+            try{
+                const x = __normalizePCM(pcm16k);
+                // 按真实输入名喂入：有 length / len / x_len / x_lens 就同步提供
+                const names = ctx.session.inputNames || [];
+                const feeds = {};
+                // 常见主输入
+                const mainName = names.find(n => /input|waveform|audio|x$/i.test(n)) || names[0] || 'input';
+                feeds[mainName] = new ort.Tensor('float32', x, [1, x.length]);
+
+                const lenName = names.find(n => /length|lens|len/i.test(n));
+                if (lenName) {
+                    // Int32 更通用；有的模型要 int64，若需要可再加一条分支
+                    feeds[lenName] = new ort.Tensor('int32', Int32Array.from([x.length]), [1]);
+                }
+
+                const out = await ctx.session.run(feeds);
+                const firstKey = Object.keys(out)[0]; const y = out[firstKey];
+                let data = y.data, T=0,V=0;
+                if (y.dims.length===3){ T=y.dims[1]; V=y.dims[2]; }
+                else if (y.dims.length===2){ T=y.dims[0]; V=y.dims[1]; }
+                else { return null; }
+
+                const logits = new Float32Array(T*V); logits.T=T; logits.V=V;
+                logits.set(data.subarray(0, T*V));
+                const logProbs = __softmaxLogits2LogProbs(logits);
+                return { logProbs, T, V };
+            }catch(e){
+                console.warn('CTC run failed (fallback to proxy):', e);
+                return null;
+            }
+        }
+        function __avgLogProbForRef(logProbs, tokenSeq){
+            // 简化版 CTC 对齐：贪心取每帧最大类，统计与 ref 的匹配覆盖率，输出对齐的平均 logprob
+            const { T, V } = logProbs; const arr = logProbs;
+            const best = new Int32Array(T);
+            for (let t=0;t<T;t++){
+                let bi=0, bv=-1e9; for(let v=0;v<V;v++){ const lp = arr[t*V+v]; if (lp>bv){ bv=lp; bi=v; } }
+                best[t]=bi;
+            }
+            // 将 ref 逐个 token 在时间上贪心匹配
+            let ti=0; const lps=[]; for (const tok of tokenSeq){ const id = __ctcCtx.token2id.get(tok); if(id==null) continue; while(ti<T && best[ti]!==id) ti++; if (ti<T){ lps.push(arr[ti*V+id]); ti++; } }
+            if (!lps.length) return -10; // 极低
+            const avg = lps.reduce((s,x)=>s+x,0)/lps.length;
+            return avg;
+        }
+        async function tryComputeRealGOP(pcm16k, sr, refWords){
+            // 若 CTC 不可用则回退
+            const r = await __runCTC(pcm16k);
+            if (!r || !r.logProbs) return null;
+            const { logProbs } = r; const T = logProbs.T, V = logProbs.V; const arr = logProbs;
+            const totalSec = (pcm16k.length||0) / (sr||16000); const frameDur = totalSec / Math.max(1,T);
+
+            // 参考文本 -> 模型 tokens（SPM 贪心分词）
+            const refText = (refWords||[]).join(' ');
+            const spmTokens = (function __tokenize(text){
+                const ctx = __ctcCtx; if (!ctx || !ctx.sortedTokens) return [];
+                const cleaned = (text||'').replace(/[^A-Za-z' ]+/g,' ').trim();
+                if (!cleaned) return [];
+                const spm = '▁' + cleaned.replace(/\s+/g,' ▁');
+                const toks = []; let i=0; const vocab = ctx.sortedTokens;
+                while (i < spm.length){
+                    let matched = null;
+                    for (let k=0;k<vocab.length;k++){
+                        const tk = vocab[k];
+                        if (spm.startsWith(tk, i)){ matched = tk; break; }
+                    }
+                    if (matched){ toks.push(matched); i += matched.length; }
+                    else { i += 1; }
+                }
+                return toks;
+            })(refText);
+            // 构建 SPM -> refIds 的索引映射，过滤掉词表中不存在的 token
+            const idPerSpm = spmTokens.map(t=>__ctcCtx.token2id.get(t));
+            const spmToRef = new Int32Array(spmTokens.length); spmToRef.fill(-1);
+            const refIds = []; const filteredSpmIdx = [];
+            for (let i=0;i<spmTokens.length;i++){
+                const id = idPerSpm[i]; if (id!=null){ spmToRef[i] = refIds.length; refIds.push(id); filteredSpmIdx.push(i); }
+            }
+            if (!refIds.length) return null;
+
+            // 帧级最优路径（argmax）
+            const bestId = new Int32Array(T);
+            for (let t=0;t<T;t++){
+                let bi=0, bv=-1e9; for(let v=0;v<V;v++){ const lp=arr[t*V+v]; if(lp>bv){ bv=lp; bi=v; } }
+                bestId[t]=bi;
+            }
+
+            // 贪心对齐：为每个参考 token 找到最早匹配帧
+            const align = new Int32Array(refIds.length).fill(-1);
+            let pos=0; for (let i=0;i<refIds.length;i++){
+                const id = refIds[i]; let found=-1; for (let t=pos;t<T;t++){ if (bestId[t]===id){ found=t; break; } }
+                if (found>=0){ align[i]=found; pos=found+1; } else { align[i]=-1; }
+            }
+            // 用线性插值/平均分布填补 -1
+            const nTok = align.length;
+            const known = []; for (let i=0;i<nTok;i++) if (align[i]>=0) known.push(i);
+            if (!known.length){ for (let i=0;i<nTok;i++) align[i] = Math.floor((i+1)*T/(nTok+1)); }
+            else {
+                // 前段缺失
+                const first=known[0]; for (let i=0;i<first;i++){ align[i] = Math.floor((i+1)*align[first]/(first+1)); }
+                // 中间段
+                for (let k=0;k<known.length-1;k++){
+                    const a=known[k], b=known[k+1]; const left=align[a], right=align[b]; const span=b-a; for (let i=a+1;i<b;i++){
+                        const rti = i-a; align[i] = Math.floor(left + rti*(right-left)/span);
+                    }
+                }
+                // 末段缺失
+                const last = known[known.length-1]; for (let i=last+1;i<nTok;i++){ align[i] = Math.floor(align[last] + (i-last)*(T-1-align[last])/(nTok-1-last+1e-6)); }
+            }
+            // 构造边界 b[0..nTok]
+            const b = new Int32Array(nTok+1); b[0]=0; b[nTok]=T;
+            for (let i=1;i<nTok;i++){
+                b[i] = Math.floor((align[i-1] + align[i]) / 2);
+                if (b[i] <= b[i-1]) b[i] = Math.min(T-1, b[i-1]+1);
+            }
+
+            // token 区段平均对数后验
+            const tokenScoresLog = new Float32Array(nTok);
+            for (let i=0;i<nTok;i++){
+                const id = refIds[i]; const s=b[i], e=b[i+1]; let sum=0, cnt=0;
+                for (let t=s; t<e; t++){ sum += arr[t*V+id]; cnt++; }
+                if (cnt===0){ tokenScoresLog[i] = -10; } else { tokenScoresLog[i] = sum/cnt; }
+            }
+
+            // 基于 SPM 的“词”分组（以 ▁ 作为词起始），并投影到过滤后的 ref token 索引
+            const wordTokenGroupsSpm = []; let cur=[];
+            for (let i=0;i<spmTokens.length;i++){
+                const tk = spmTokens[i]; if (tk.startsWith('▁')){ if (cur.length) wordTokenGroupsSpm.push(cur); cur=[i]; } else { cur.push(i); }
+            }
+            if (cur.length) wordTokenGroupsSpm.push(cur);
+            const wordTokenGroups = wordTokenGroupsSpm.map(group=> group.map(i=>spmToRef[i]).filter(j=>j>=0) ).filter(g=>g.length>0);
+            // 将 groups 截断/对齐到 refWords 长度
+            const targetWordCount = (refWords||[]).length; if (targetWordCount>0 && wordTokenGroups.length>targetWordCount){ wordTokenGroups.length = targetWordCount; }
+
+            // 词级时间（帧）
+            const wordsTiming = wordTokenGroups.map(group=>{
+                const firstTok = group[0], lastTok = group[group.length-1];
+                const s = (firstTok < nTok) ? b[firstTok] : 0;
+                const e = (lastTok+1 <= nTok) ? b[lastTok+1] : T;
+                return { s, e };
+            });
+
+            // 取字典音素
+            const dict = await ensurePhonemeDict();
+            function stripStress(p){ return (p||'').replace(/[0-2]$/,''); }
+            function getWordPhones(w){
+                const key = (w||'').toUpperCase(); const arr = dict[key];
+                let phones = Array.isArray(arr) && arr.length ? arr[0] : null;
+                if (!phones){ phones = __simpleG2P(w); }
+                if (!Array.isArray(phones)) phones = [String(phones||'').toUpperCase()].filter(Boolean);
+                return phones.map(stripStress);
+            }
+            function isVowel(p){ return __VOWELS.includes(stripStress(p)); }
+
+            // 将词时间按音素加权分配
+            const phAlign = []; // {ph, startSec, endSec, score}
+            for (let wi=0; wi<wordsTiming.length; wi++){
+                const w = (refWords||[])[wi] || '';
+                const { s:eS=0, e:eE=T } = wordsTiming[wi]||{}; const s = eS, e = eE;
+                const frames = Math.max(0, e - s);
+                const phs = getWordPhones(w);
+                if (!phs.length || frames<=0) continue;
+                const weights = phs.map(p=> isVowel(p)?1.4:1.0 );
+                const W = weights.reduce((a,x)=>a+x,0) || 1;
+                let alloc = phs.map((_,i)=> Math.max(1, Math.round(weights[i]/W * frames)) );
+                // 调整总和
+                let diff = frames - alloc.reduce((a,x)=>a+x,0);
+                for (let k=0; diff!==0 && k<alloc.length; k=(k+1)%alloc.length){ if (diff>0){ alloc[k]++; diff--; } else if (alloc[k]>1){ alloc[k]--; diff++; } }
+                // 逐音素区段评分：取该区段帧的“帧最大类”的对数概率平均
+                let curS = s;
+                for (let pi=0; pi<phs.length; pi++){
+                    const len = alloc[pi]; const ps = curS; const pe = Math.min(T, ps + len); curS = pe;
+                    if (pe<=ps) continue;
+                    let sumLog=0, cnt=0; for (let t=ps; t<pe; t++){ let bv=-1e9; for (let v=0; v<V; v++){ const lp = arr[t*V+v]; if (lp>bv) bv=lp; } sumLog += bv; cnt++; }
+                    const avgLog = cnt? (sumLog/cnt) : -10;
+                    const phScore = Math.round(clamp((avgLog + 5)/5, 0, 1) * 100);
+                    phAlign.push({ ph: stripStress(phs[pi]), startSec: ps*frameDur, endSec: pe*frameDur, score: phScore, word: w });
+                }
+            }
+
+            if (!phAlign.length){
+                // 回退到 token 平均分
+                const avgTok = tokenScoresLog.reduce((s,x)=>s+x,0)/Math.max(1, tokenScoresLog.length);
+                const score = Math.round(clamp((avgTok + 5)/5, 0, 1) * 100);
+                return { score, weakPhonemes: [], phonemeCount: 0, method: 'ctc' };
+            }
+
+            // ------- logistic 校准（token 平均对数后验 vs blank 基线） -------
+            const valid = Array.from(tokenScoresLog).filter(x => isFinite(x) && x > -10);
+            const avgLP = valid.length ? valid.reduce((s,x)=>s+x,0)/valid.length : -10;
+            const bid = (__ctcCtx && __ctcCtx.blankId!=null) ? __ctcCtx.blankId : 0;
+            let blankSum = 0, blankCnt = 0; for (let t=0;t<T;t++){ blankSum += arr[t*V + bid]; blankCnt++; }
+            const blankAvg = blankCnt ? (blankSum/blankCnt) : -2.5;
+            const coverage = valid.length / Math.max(1, tokenScoresLog.length);
+            const margin = avgLP - blankAvg;
+            const s = 1 / (1 + Math.exp(-(margin + 1.2) * 1.8));
+            let ph = s; ph = clamp01(ph * (0.7 + 0.6*coverage));
+            const overall = Math.round(ph*100);
+
+            // 弱点音素：仍按区段分数挑最低的几个展示（不拉分）
+            const sorted = [...phAlign].sort((a,b)=>a.score-b.score);
+            const low = sorted.filter(x=>x.score<70).slice(0,3);
+            const pick = (low.length? low : sorted.slice(0,3));
+            const weakPhonemes = Array.from(new Set(pick.map(x=>x.ph))).slice(0,3);
+
+            return { score: overall, weakPhonemes, phonemeCount: phAlign.length, method: 'ctc', phonemeAlignment: phAlign };
+        }
+        async function ensurePhonemeDict(){
+            if (__phonemeDict) return __phonemeDict;
+            if (__phonemeDictLoading) return __phonemeDictLoading;
+            const paths = [
+                '../Old_code/AI Pronunciation Coach/public/data/en_US.json',
+                '../Old_code/AI%20Pronunciation%20Coach/public/data/en_US.json',
+                '../Old_code/AI Pronunciation Coach/src/data/en_US.json',
+                '../Old_code/AI%20Pronunciation%20Coach/src/data/en_US.json',
+                '/public/data/en_US.json',
+                '/Old_code/AI Pronunciation Coach/public/data/en_US.json',
+                '/Old_code/AI%20Pronunciation%20Coach/public/data/en_US.json',
+                './data/en_US.json',
+                'data/en_US.json'
+            ];
+            __phonemeDictLoading = (async ()=>{
+                for (const p of paths){
+                    try{ const r = await fetch(p); if(r.ok){ const j = await r.json(); __phonemeDict = j||{}; return __phonemeDict; } }catch{}
+                }
+                __phonemeDict = {}; return __phonemeDict;
+            })();
+            return __phonemeDictLoading;
+        }
+        const __VOWELS = ['AA','AE','AH','AO','AW','AY','EH','ER','EY','IH','IY','OW','OY','UH','UW'];
+        function __simpleG2P(word){
+            // 极简回退规则（仅当字典缺失时），输出 ARPABET 近似
+            let w = (word||'').toLowerCase();
+            // 处理部分二合字母
+            w = w.replace(/ng/g,' NG ').replace(/ch/g,' CH ').replace(/sh/g,' SH ').replace(/th/g,' TH ').replace(/zh/g,' ZH ').replace(/ph/g,' F ');
+            w = w.replace(/[^a-z'+ ]/g,' ');
+            const letters = w.trim().split(/\s+/);
+            const phones = [];
+            for (const l of letters){
+                if (l === 'ng') { phones.push('NG'); continue; }
+                const c = l[0];
+                switch(c){
+                    case 'a': phones.push('AE'); break; case 'e': phones.push('EH'); break;
+                    case 'i': phones.push(l.length>1?'AY':'IH'); break; case 'o': phones.push('OW'); break; case 'u': phones.push('UW'); break; case 'y': phones.push('Y'); break;
+                    case 'b': phones.push('B'); break; case 'c': phones.push('K'); break; case 'd': phones.push('D'); break; case 'f': phones.push('F'); break; case 'g': phones.push('G'); break;
+                    case 'h': phones.push('HH'); break; case 'j': phones.push('JH'); break; case 'k': phones.push('K'); break; case 'l': phones.push('L'); break; case 'm': phones.push('M'); break; case 'n': phones.push('N'); break;
+                    case 'p': phones.push('P'); break; case 'q': phones.push('K'); phones.push('W'); break; case 'r': phones.push('R'); break; case 's': phones.push('S'); break; case 't': phones.push('T'); break; case 'v': phones.push('V'); break;
+                    case 'w': phones.push('W'); break; case 'x': phones.push('K'); phones.push('S'); break; case 'z': phones.push('Z'); break; default: break;
+                }
+            }
+            // 确保至少一个元音
+            if (!phones.some(p=>__VOWELS.includes(p))) phones.push('AH');
+            return phones;
+        }
+        function g2pWordCMU(word){
+            const dict = __phonemeDict; if (!dict) return __simpleG2P(word);
+            const key = (word||'').toUpperCase();
+            const e = dict[key];
+            if (Array.isArray(e) && e.length){
+                // e 可能是字符串或数组；统一为数组第一条
+                let p = e[0];
+                if (Array.isArray(p)) p = p.join(' ');
+                if (typeof p === 'string'){
+                    return p.trim().split(/\s+/).map(ph=>ph.replace(/[0-9]$/,''));
+                }
+            }
+            return __simpleG2P(word);
+        }
+        function wordsToPhones(words){ return words.flatMap(w=> g2pWordCMU(w)); }
+        function buildPhonemeTimeline(words, perSec, phones){
+            // 将每个词的时长均分到其音素
+            const timeline = []; let t = 0; let pi = 0;
+            for(let wi=0; wi<words.length; wi++){
+                const w = words[wi]; const dur = perSec[wi] || 0.3; // 默认 0.3s
+                // 取该词的音素片段（简单：按字母近似个数/或按 phones 连续切取）
+                const phs = []; while (pi<phones.length && phs.length<Math.max(1, Math.ceil(w.length/3))){ phs.push(phones[pi++]); }
+                const n = Math.max(1, phs.length);
+                const pd = dur / n; let st = t;
+                for(const p of phs){ const ed = st + pd; timeline.push({ p, start: st, end: ed }); st = ed; }
+                t += dur;
+            }
+            return timeline;
+        }
+        function segmentStats(pcm, sr, st, ed){
+            const a = Math.max(0, Math.floor(st*sr)); const b = Math.min(pcm.length, Math.ceil(ed*sr));
+            if (b<=a+4) return { rms:0, zcr:0, f0:0, f0Valid:false, r:0 };
+            const seg = pcm.slice(a,b);
+            const rms = Math.sqrt(mean(seg.map(x=>x*x)));
+            const zcr = zeroCrossRate(seg);
+            // 取中间 50% 做 ACF F0
+            const midA = a + Math.floor((b-a)*0.25); const midB = a + Math.floor((b-a)*0.75);
+            const frame = pcm.slice(midA, midB);
+            const fr = estimateF0ACF(frame, sr, 80, 350) || { f0:0, r:0 };
+            const f0 = fr.f0 || 0; const r = fr.r || 0;
+            return { rms, zcr, f0, f0Valid: f0>60, r };
+        }
+        function computeProxyGOP(pcm, sr, timeline){
+            const statsList = [];
+            for (const seg of timeline){
+                const st = seg.start, ed = seg.end;
+                const stt = segmentStats(pcm, sr, st, ed);
+                statsList.push({ ...stt, p: seg.p, start: st, end: ed });
+            }
+            const rmss = statsList.map(s=>s.rms);
+            const zcrs = statsList.map(s=>s.zcr);
+            const rmsMed = median(rmss);
+            const rmsP90 = percentile(rmss, 90);
+            const zMed = median(zcrs);
+            const zWidth = Math.max(0.12, 0.5 * std(zcrs));
+            const scores = [];
+            for (const stt of statsList){
+                const vol = clamp01((stt.rms - rmsMed*0.6) / ((rmsP90 - rmsMed*0.6) + 1e-6));
+                const zcrGood = 1 - clamp01(Math.abs(stt.zcr - zMed) / zWidth);
+                const f0ok = clamp01(stt.r || 0);
+                const s = clamp01(0.4*vol + 0.2*zcrGood + 0.4*f0ok);
+                scores.push({ p: stt.p, score: s, start: stt.start, end: stt.end });
+            }
+            const avg = scores.length? mean(scores.map(x=>x.score)) : 0;
+            return { scores, avg };
+        }
+        async function computeAdvancedPronScore(pcm16k, sr, refWords){
+            try{ await ensurePhonemeDict(); }catch{}
+            // 优先尝试真实 GOP（ORT-Web + CTC），失败则回退启发式
+            try {
+                if (typeof tryComputeRealGOP === 'function'){
+                    const real = await tryComputeRealGOP(pcm16k, sr, refWords);
+                    if (real && Number.isFinite(real.score)) return real;
+                }
+            } catch {}
+            const { perWordSec } = computeDurationsFromTokens();
+            const phones = wordsToPhones(refWords);
+            const timeline = buildPhonemeTimeline(refWords, perWordSec, phones);
+            const proxy = computeProxyGOP(pcm16k, sr, timeline);
+            const advScore = Math.round(proxy.avg*100);
+            const weak = proxy.scores.slice().sort((a,b)=>a.score-b.score).slice(0,3).map(x=>x.p);
+            return { score: advScore, weakPhonemes: weak, phonemeCount: proxy.scores.length, method: 'proxy' };
+        }
+
+        // ====== 离线 ASR（Vosk WASM）集成：WER/对齐 ======
+        let __voskLoading = null, __voskModel = null, __voskRec = null;
+        async function loadVoskUMD(){
+            if (window.Vosk) return;
+            await new Promise((resolve, reject) => {
+                const s = document.createElement('script');
+                s.src = 'https://cdn.jsdelivr.net/npm/vosk-browser@0.0.5/dist/vosk.js';
+                s.onload = resolve;
+                s.onerror = () => {
+                    const s2 = document.createElement('script');
+                    s2.src = 'https://cdn.jsdelivr.net/npm/vosk-browser@0.0.8/dist/vosk.js';
+                    s2.onload = resolve;
+                    s2.onerror = reject;
+                    document.head.appendChild(s2);
+                };
+                document.head.appendChild(s);
+            });
+        }
+        async function ensureVoskRecognizer(){
+            if (__voskRec) return __voskRec;
+            if (__voskLoading) return __voskLoading;
+            __voskLoading = (async () => {
+                await loadVoskUMD();
+                const paths = [
+                    '../Old_code/AI Pronunciation Coach/public/models/vosk-model-small-en-us-0.15',
+                    '../Old_code/AI%20Pronunciation%20Coach/public/models/vosk-model-small-en-us-0.15'
+                ];
+                let model = null;
+                for (const p of paths){
+                    try { model = await window.Vosk.createModel(p); break; } catch(e) {}
+                }
+                if (!model) throw new Error('Vosk 模型加载失败（请确认 models 目录路径可访问）');
+                let rec = null;
+                if (typeof model.createRecognizer === 'function') {
+                    rec = await model.createRecognizer(16000);
+                } else if (window.Vosk && (window.Vosk.Recognizer || window.Vosk.KaldiRecognizer)) {
+                    const Ctor = window.Vosk.Recognizer || window.Vosk.KaldiRecognizer;
+                    try { rec = new Ctor(model, 16000); } catch { rec = new Ctor({ model, sampleRate: 16000 }); }
+                }
+                if (!rec) throw new Error('无法创建 Vosk 识别器');
+                if (typeof rec.setWords === 'function') rec.setWords(true);
+                __voskModel = model; __voskRec = rec; return rec;
+            })();
+            return __voskLoading;
+        }
+        function f32ToI16(f){ const out = new Int16Array(f.length); for(let i=0;i<f.length;i++){ let s = Math.max(-1, Math.min(1, f[i]||0)); out[i] = s < 0 ? s*32768 : s*32767; } return out; }
+        async function runVoskOnPCM(pcm16k){
+            const rec = await ensureVoskRecognizer();
+            try { if (typeof rec.reset === 'function') rec.reset(); } catch {}
+            const i16 = f32ToI16(pcm16k);
+            const chunkSize = 16000; // 1s/chunk at 16kHz
+            function parseRes(r){
+                if (!r) return null;
+                if (typeof r === 'string') { try { r = JSON.parse(r); } catch { return null; } }
+                return r;
+            }
+            let words = [];
+            let text = '';
+            for (let off = 0; off < i16.length; off += chunkSize){
+                const slice = i16.subarray(off, Math.min(off + chunkSize, i16.length));
+                try { rec.acceptWaveform(slice); } catch { try { rec.acceptWaveform(Array.from(slice)); } catch {}
+                }
+                const pr = (typeof rec.partialResult === 'function') ? parseRes(rec.partialResult()) : null;
+                if (pr && Array.isArray(pr.result)){
+                    words.push(...pr.result);
+                    text = pr.text || text;
+                } else if (pr && pr.text && !text){
+                    text = pr.text;
+                }
+            }
+            const fr = (typeof rec.finalResult === 'function') ? parseRes(rec.finalResult()) : (typeof rec.result === 'function' ? parseRes(rec.result()) : null);
+            if (fr){
+                if (Array.isArray(fr.result)) words.push(...fr.result);
+                if (Array.isArray(fr.alternatives) && fr.alternatives.length){
+                    const alt = fr.alternatives[0];
+                    if (Array.isArray(alt.result) && (!words || words.length === 0)) words = alt.result.slice();
+                    if (!fr.text && alt.text) text = alt.text;
+                }
+                text = fr.text || text || (Array.isArray(words)? words.map(w=>w.word).join(' ') : '');
+            }
+            return { words, text };
+        }
+        function normalizeWord(w){ return (w||'').toLowerCase().replace(/[^a-z']+/g,'').replace(/^'+|'+$/g,''); }
+        function getRefWords(){
+            const container = (mode === 'single') ? (singleTokens || document) : (fullSection || document);
+            const els = Array.from(container.querySelectorAll('.token .word'));
+            return els.map(el => normalizeWord(el.textContent)).filter(Boolean);
+        }
+        function alignWER(ref, hyp){
+            const n = ref.length, m = hyp.length;
+            // 近似匹配：允许轻微拼写差异、连读、漏字符以更宽容地评估“标准朗读”
+            function levenshtein(a, b, maxd=2){
+                if (a===b) return 0;
+                const la=a.length, lb=b.length;
+                if (Math.abs(la-lb)>maxd) return maxd+1;
+                const dp = new Array(lb+1);
+                for (let j=0;j<=lb;j++) dp[j]=j;
+                for (let i=1;i<=la;i++){
+                    let prev = dp[0];
+                    dp[0]=i;
+                    let minRow = dp[0];
+                    for (let j=1;j<=lb;j++){
+                        const temp = dp[j];
+                        const cost = (a[i-1]===b[j-1])?0:1;
+                        dp[j] = Math.min(
+                            dp[j] + 1,      // del in b (ins in a)
+                            dp[j-1] + 1,    // ins in b (del in a)
+                            prev + cost     // sub
+                        );
+                        prev = temp;
+                        if (dp[j] < minRow) minRow = dp[j];
+                    }
+                    if (minRow > maxd) return maxd+1; // 提前剪枝
+                }
+                return dp[lb];
+            }
+            function subCost(a, b){
+                if (!a || !b) return 1.0;
+                if (a===b) return 0;
+                const d = levenshtein(a,b,2);
+                if (d<=1) return 0.3; // 极近似：I'm vs Im, color vs colr
+                if (d===2) return 0.6; // 轻微差异
+                return 1.0;            // 明显不同
+            }
+            const DEL = 1.0, INS = 0.6; // 插入略轻罚，删除重罚
+            const dp = Array.from({length: n+1}, () => Array(m+1).fill(0));
+            const bt = Array.from({length: n+1}, () => Array(m+1).fill(''));
+            for(let i=0;i<=n;i++){ dp[i][0]=i*DEL; bt[i][0]='del'; }
+            for(let j=0;j<=m;j++){ dp[0][j]=j*INS; bt[0][j]='ins'; }
+            bt[0][0]='';
+            for(let i=1;i<=n;i++){
+                for(let j=1;j<=m;j++){
+                    if (ref[i-1] === hyp[j-1]){ dp[i][j]=dp[i-1][j-1]; bt[i][j]='ok'; }
+                    else {
+                        const sc = subCost(ref[i-1], hyp[j-1]);
+                        const del = dp[i-1][j] + DEL;
+                        const ins = dp[i][j-1] + INS;
+                        const sub = dp[i-1][j-1] + sc;
+                        const min = Math.min(del, ins, sub);
+                        dp[i][j]=min;
+                        bt[i][j] = (min===sub ? (sc<=0.6 ? 'subNear' : 'sub') : (min===del ? 'del' : 'ins'));
+                    }
+                }
+            }
+            let i=n, j=m; const aligned=[]; let ok=0, sub=0, subNear=0, del=0, ins=0;
+            while(i>0 || j>0){
+                const b = bt[i][j];
+                if (i>0 && j>0 && (b==='ok' || b==='sub' || b==='subNear')){
+                    // 对 UI 维持 'sub' 标记，细分计数在 counts 中体现
+                    aligned.push({ type: (b==='ok'?'ok':'sub'), ref: ref[i-1], hyp: hyp[j-1], refIndex: i-1, hypIndex: j-1 });
+                    if (b==='ok') ok++; else if (b==='subNear') subNear++; else sub++;
+                    i--; j--;
+                } else if (i>0 && (j===0 || b==='del')){
+                    aligned.push({ type: 'del', ref: ref[i-1], hyp: null, refIndex: i-1, hypIndex: null });
+                    del++; i--;
+                } else {
+                    aligned.push({ type: 'ins', ref: null, hyp: hyp[j-1], refIndex: null, hypIndex: j-1 });
+                    ins++; j--;
+                }
+            }
+            aligned.reverse();
+            const werClassic = n ? ((sub + subNear + del + ins) / n) : 0;
+            const werWeighted = n ? (dp[n][m] / n) : 0;
+            return { wer: werClassic, werWeighted, aligned, counts: { ok, sub, subNear, del, ins } };
+        }
+        // 标注对齐结果到 UI（逐词）
+        function clearAccuracyHighlights(){
+            try{
+                const container = (mode === 'single') ? (singleTokens || document) : (fullSection || document);
+                const tks = Array.from(container.querySelectorAll('.token'));
+                for (const tk of tks){
+                    tk.removeAttribute('data-acc');
+                    tk.style.outline = '';
+                    tk.style.outlineOffset = '';
+                    tk.style.backgroundColor = '';
+                }
+            }catch{}
+        }
+        function applyAlignmentToTokens(aligned){
+            const container = (mode === 'single') ? (singleTokens || document) : (fullSection || document);
+            const wordEls = Array.from(container.querySelectorAll('.token .word'));
+            for (const a of aligned){
+                if (a.refIndex != null && wordEls[a.refIndex]){
+                    const tk = wordEls[a.refIndex].closest('.token');
+                    if (!tk) continue;
+                    tk.dataset.acc = a.type;
+                    if (a.type === 'ok'){
+                        tk.style.outline = '2px solid #22c55e';
+                        tk.style.outlineOffset = '2px';
+                        tk.style.backgroundColor = 'rgba(34,197,94,0.08)';
+                    } else if (a.type === 'sub'){
+                        tk.style.outline = '2px solid #ef4444';
+                        tk.style.outlineOffset = '2px';
+                        tk.style.backgroundColor = 'rgba(239,68,68,0.08)';
+                    } else if (a.type === 'del'){
+                        tk.style.outline = '2px dashed #f59e0b';
+                        tk.style.outlineOffset = '2px';
+                        tk.style.backgroundColor = 'rgba(245,158,11,0.08)';
+                    }
+                }
+            }
+        }
+        async function computeAndRenderScore(blob){
+            // 评分门控：关闭则仅提示，并跳过计算
+            if (typeof scoringEnabled !== 'undefined' && !scoringEnabled) {
+                const scoreSection = document.getElementById('scoreSection');
+                const scoreSummary = document.getElementById('scoreSummary');
+                const scoreDetails = document.getElementById('scoreDetails');
+                if (scoreSection) scoreSection.hidden = false;
+                if (scoreSummary) { scoreSummary.textContent = '评分功能已关闭，如需请打开顶部评分按钮'; scoreSummary.style.color = '#C4C4C4'; }
+                if (scoreDetails) scoreDetails.textContent = '';
+                return;
+            }
+            if (window.__scoringBusy) { console.warn('scoring in progress, skip'); return; }
+            window.__scoringBusy = true;
+            // 为一次评分生成令牌，避免异步 WER 污染后续评分
+            window.__scoringToken = (window.__scoringToken || 0) + 1;
+            const __token = window.__scoringToken;
+            try{
+                // UI: 展示评分卡并置为 loading 文案
+                const scoreSection = document.getElementById('scoreSection');
+                const scoreSummary = document.getElementById('scoreSummary');
+                const scoreDetails = document.getElementById('scoreDetails');
+                if(scoreSection) scoreSection.hidden = false;
+                if(scoreSummary){ scoreSummary.textContent = '正在评分…'; scoreSummary.style.color = ''; }
+                if(scoreDetails) scoreDetails.textContent = '';
+
+                const targetSr = 16000; // 统一到 16k 计算
+                let { pcm, sr } = await decodeToPCM(blob);
+                if (!pcm || pcm.length === 0) {
+                    // 解码失败兜底：尝试直接用原始 blob 播放并给出提示，同时避免评分全为 0
+                    if (scoreSummary) scoreSummary.textContent = '音频解码失败，使用空特征评分（请重试或更换浏览器）';
+                    pcm = new Array(targetSr).fill(0); // 1秒静音，防止后续流程崩溃
+                    sr = targetSr;
+                }
+                if (!sr || !isFinite(sr) || sr <= 0) sr = targetSr;
+                const pcm16k = resampleLinear(pcm, sr, targetSr);
+                const feats = computeFeatures(pcm16k, targetSr);
+
+                const refWords = getRefWords();
+                const { words } = computeDurationsFromTokens();
+                const wordCount = words.length;
+
+                // 规则化建议
+                const tips = [];
+                if (feats.rmsMean < 0.12) tips.push('音量略小，可靠近麦克风或提高说话音量');
+                if (feats.rmsMean > 0.35) tips.push('音量偏大，可能发生削波，可降低音量');
+                if (feats.f0PctValid < 0.3) tips.push('基频不稳定，注意保持平稳的发声');
+                if (feats.gapsSec > Math.max(1.0, 0.5*wordCount)) tips.push('停顿较多，尝试更连贯地说出整句');
+
+                // 计算启发式音素评分（代理 GOP）
+                let advProxy = null;
+                try {
+                    const { perWordSec } = computeDurationsFromTokens();
+                    const phones = wordsToPhones(refWords);
+                    const timeline = buildPhonemeTimeline(refWords, perWordSec, phones);
+                    const proxy = computeProxyGOP(pcm16k, targetSr, timeline);
+                    advProxy = {
+                        score: Math.round(proxy.avg*100),
+                        weakPhonemes: proxy.scores.slice().sort((a,b)=>a.score-b.score).slice(0,3).map(x=>x.p),
+                        phonemeCount: proxy.scores.length,
+                        method: 'proxy',
+                        segments: proxy.scores.map(x=>({ p: x.p, start: x.start, end: x.end, score: Math.round((x.score||0)*100) }))
+                    };
+                } catch {}
+
+                // 真实 GOP（CTC）
+                let advReal = null;
+                try { advReal = await tryComputeRealGOP(pcm16k, targetSr, refWords); } catch {}
+
+                // 缓存供模式切换复用
+                __lastScoring = { feats, wordCount, tips, advProxy, advReal, werInfo: null };
+                __renderScoringFromCache();
+
+                // —— 离线 ASR：识别 + WER 对齐 + 高亮（后台追加，异步，不阻塞评分） ——
+                const __runWerAsync = async () => {
+                    try {
+                        if (!__voskRec) {
+                            if (scoreDetails) scoreDetails.textContent += `\n提示：首次加载离线识别模型，可能需要数十秒，请耐心等待…`;
+                        }
+                        const { words: hypWords } = await runVoskOnPCM(pcm16k);
+                        if (__token !== window.__scoringToken) return; // 已有新评分，丢弃旧结果
+                        const FILLERS = new Set(['uh','um','ah','er','erm','hmm','mm','uhh','umm']);
+                        const hyp = Array.isArray(hypWords) ? hypWords.map(w=>normalizeWord(w.word)).filter(w=>w && !FILLERS.has(w)) : [];
+                        const ref = getRefWords();
+                        const werInfo = alignWER(ref, hyp);
+                        if (__token !== window.__scoringToken) return; // 再次检查
+                        clearAccuracyHighlights && clearAccuracyHighlights();
+                        applyAlignmentToTokens && applyAlignmentToTokens(werInfo.aligned);
+                        if (__lastScoring) { __lastScoring.werInfo = werInfo; }
+                        __renderScoringFromCache();
+                    } catch (e) { console.warn('WER 对齐失败（不影响基础评分）：', e); }
+                };
+                // 提前释放忙碌状态，允许下一次评分
+                window.__scoringBusy = false;
+                __runWerAsync();
+            } catch(err){
+                const scoreSummary = document.getElementById('scoreSummary');
+                const scoreDetails = document.getElementById('scoreDetails');
+                if(scoreSummary) scoreSummary.textContent = '评分失败';
+                if(scoreDetails) scoreDetails.textContent = String(err?.message||err||'');
+            } finally {
+                // 兜底：确保不会因异常而长时间占用 busy 状态
+                window.__scoringBusy = false;
+            }
+        }
+        // 在开始录音时清空评分区（保持 UI 干净）
+        (function(){
+            const __origStart = startRecording;
+            startRecording = async function(){
+                try{
+                    const scoreSection = document.getElementById('scoreSection');
+                    const scoreSummary = document.getElementById('scoreSummary');
+                    const scoreDetails = document.getElementById('scoreDetails');
+                    if (typeof clearAccuracyHighlights === 'function') {
+                        try { clearAccuracyHighlights(); } catch {}
+                    }
+                    if(scoreSummary) scoreSummary.textContent = '';
+                    if(scoreDetails) scoreDetails.textContent = '';
+                    if(scoreSection) scoreSection.hidden = true;
+                }catch{}
+                return __origStart.apply(this, arguments);
+            }
+        })();
+
+        // ===== 评分模式渲染辅助与绑定 =====
+        function __renderScoringFromCache(){
+            const scoreSummary = document.getElementById('scoreSummary');
+            const scoreDetails = document.getElementById('scoreDetails');
+            const chipsEl = document.getElementById('phonemeChips');
+            const tlEl = document.getElementById('phonemeTimeline');
+            const sw = document.getElementById('scoreModeSwitch');
+            if (sw){
+                const btns = Array.from(sw.querySelectorAll('.ms-btn'));
+                btns.forEach(b=> b.classList.toggle('active', b.getAttribute('data-mode')===__scoreMode));
+            }
+            if (!__lastScoring){
+                if (scoreSummary) { scoreSummary.textContent = '暂无评分'; scoreSummary.style.color = ''; }
+                if (scoreDetails) scoreDetails.textContent = '';
+                if (chipsEl) chipsEl.style.display = 'none';
+                if (tlEl) tlEl.style.display = 'none';
+                return;
+            }
+            const { feats, wordCount, tips, advProxy, advReal, werInfo } = __lastScoring;
+
+            // 选取当前模式下的音素分数来源
+            let phBase = null;
+            if (__scoreMode==='basic'){
+                if (werInfo && werInfo.counts){
+                    const ok = Number(werInfo.counts.ok||0);
+                    const sub = Number(werInfo.counts.sub||0);
+                    const subNear = Number((werInfo.counts.subNear)||0);
+                    const ins = Number(werInfo.counts.ins||0);
+                    const del = Number(werInfo.counts.del||0);
+                    // 准确度仅基于“已读的词”（不把删除计入分母），避免读少量词时被未读词拉低
+                    const denomSpoken = ok + sub + subNear; // 仅统计已读对齐
+                    if (denomSpoken > 0){
+                        const ratioSpoken = (ok + 0.8*subNear + 0.5*sub) / denomSpoken; // 0~1
+                        phBase = Math.round(clamp01(ratioSpoken)*100);
+                    } else if (Number.isFinite(werInfo.werWeighted)){
+                        // 没有有效已读计数时，回退到加权WER（包含DEL），再不行再回退到GOP
+                        phBase = Math.round(clamp01(1 - werInfo.werWeighted) * 100);
+                    }
+                }
+                if (phBase==null){ phBase = (advReal?.score ?? advProxy?.score ?? null); }
+            } else if (__scoreMode==='real'){
+                phBase = advReal?.score ?? null;
+            } else if (__scoreMode==='proxy'){
+                phBase = advProxy?.score ?? null;
+            }
+            const weakBase = (__scoreMode==='real' ? (advReal?.weakPhonemes||[]) : (__scoreMode==='proxy' ? (advProxy?.weakPhonemes||[]) : []));
+
+            // 词速估计（仅用于 FAC 完整度）
+            const estRate = (wordCount>0 && feats.totalSec>0) ? (wordCount/feats.totalSec) : null;
+            // 覆盖率（完整度）：优先使用录音高亮的 LCS，其次用 WER 的已读比例 (ok+sub+subNear)/refLen；都不可用时回退至时长近似
+            let coverageLCS = null, coverageWER = null, coverageTime = null, coveragePct = null;
+            try {
+                const c = window.__asrCoverage;
+                if (c && typeof c.pct === 'number' && isFinite(c.pct)) coverageLCS = Number(c.pct);
+            } catch {}
+            if (werInfo && werInfo.counts){
+                const ok = Number(werInfo.counts.ok||0);
+                const sub = Number(werInfo.counts.sub||0);
+                const subNear = Number((werInfo.counts.subNear)||0);
+                const del = Number(werInfo.counts.del||0);
+                const refLen = ok + sub + subNear + del;
+                if (refLen > 0) coverageWER = ((ok + sub + subNear) / refLen) * 100;
+            }
+            try {
+                const { perWordSec } = computeDurationsFromTokens();
+                const expectedSec = Array.isArray(perWordSec) ? perWordSec.reduce((s,x)=>s + (Number(x)||0), 0) : 0;
+                const voiced = Number(feats && feats.voicedSec || 0);
+                if (expectedSec > 0 && voiced > 0) {
+                    const r = Math.min(1, voiced / expectedSec);
+                    coverageTime = r * 100;
+                }
+            } catch {}
+            coveragePct = (coverageLCS != null) ? coverageLCS : ((coverageWER != null) ? coverageWER : coverageTime);
+            // 覆盖率兜底：
+            // 1) basic 模式下且完全无 WER/CTC 时，覆盖率很高(>=95%) 直接用作准确度，避免被代理 GOP 拉低；
+            // 2) 基准句很短(<=3个词)时，更信任覆盖率：若覆盖率>=85%，将 phBase 至少提升到覆盖率分。
+            if (__scoreMode==='basic'){
+                const noWer = !werInfo;
+                if ((phBase==null || (noWer && phBase < 80)) && typeof coveragePct === 'number' && isFinite(coveragePct)){
+                    const covScore = Math.round(coveragePct);
+                    if (covScore >= 95){
+                        phBase = covScore;
+                    } else if (wordCount && wordCount <= 3 && covScore >= 85){
+                        phBase = Math.max(phBase ?? 0, covScore);
+                    }
+                }
+            }
+            let repeatsCount = 0; if (werInfo && werInfo.counts) repeatsCount = Number(werInfo.counts.ins||0);
+            const facScore = computeFACFromSignals({
+                totalSec: feats.totalSec,
+                voicedSec: feats.voicedSec,
+                gapsSec: feats.gapsSec,
+                longPauseCount: feats.longPauseCount,
+                rmsStd: feats.rmsStd,
+                rmsMean: feats.rmsMean,
+                f0PctValid: feats.f0PctValid,
+                phScore: phBase,
+                weakPhonemes: weakBase,
+                rateWps: estRate,
+                coveragePct: coveragePct,
+                maxPauseSec: feats.maxPauseSec,
+                repeatsCount: repeatsCount,
+                maxVoicedSegSec: feats.maxVoicedSegSec,
+            });
+
+            // 渲染评分概览（按需放大小分并封顶 100）
+            const fBase = Number(facScore.fluency || 0);
+            const aBase = Number(facScore.accuracy || 0);
+            const cBase = Number(facScore.completeness || 0);
+            const fScaled = Math.min(100, Math.round(fBase * 1.5)); // 流畅度 ×1.5
+            const aScaled = Math.min(100, Math.round(aBase * 2.2)); // 准确度 ×2.2
+            const cScaled = Math.min(100, Math.round(cBase)); // 完整度封顶 100
+            const breakdown = `<div class="fac-breakdown">`
+                + `<div class=\"fac-item\"><div class=\"fac-label\">流畅度</div><div class=\"fac-score\">${fScaled}</div><div class=\"fac-sub\">Fluency</div></div>`
+                + `<div class=\"fac-item\"><div class=\"fac-label\">准确度</div><div class=\"fac-score\">${aScaled}</div><div class=\"fac-sub\">Accuracy</div></div>`
+                + `<div class=\"fac-item\"><div class=\"fac-label\">完整度</div><div class=\"fac-score\">${cScaled}</div><div class=\"fac-sub\">Completeness</div></div>`
+                + `</div>`;
+            const overallScaled = Math.round((fScaled + aScaled + cScaled) / 3);
+            if (scoreSummary) scoreSummary.innerHTML = renderScoreSummary(overallScaled) + breakdown + `<div class=\"score-note\">采用小型离线模型，评分结果仅作参考</div>`;
+
+            // 详情信息按需求不再展示
+            const lines = [];
+            if (werInfo){
+                const cw = werInfo.counts || {};
+                lines.push(`对齐：正确 ${cw.ok}，近似替换 ${cw.subNear||0}，替换 ${cw.sub}，删除 ${cw.del}，插入 ${cw.ins}（准确度基于已读）`);
+                if (Number.isFinite(werInfo.werWeighted)){
+                    lines.push(`加权WER：${Math.round(werInfo.werWeighted*100)}%，对应准确度≈${Math.round((1-werInfo.werWeighted)*100)}%`);
+                }
+            }
+            if (coveragePct != null){ lines.push(`覆盖率：${Math.round(coveragePct)}%`); }
+            if (Array.isArray(tips) && tips.length){ lines.push(`建议：${tips.join('；')}`); }
+            if (scoreDetails) scoreDetails.textContent = lines.join('\n');
+
+            // 渲染弱项 chips 与时间轴
+            const cur = (__scoreMode==='real') ? advReal : (__scoreMode==='proxy' ? advProxy : null);
+            if (!cur){
+                if (chipsEl) { chipsEl.style.display='none'; chipsEl.innerHTML=''; }
+                if (tlEl) { tlEl.style.display='none'; tlEl.innerHTML=''; }
+                return;
+            }
+            // chips
+            if (chipsEl){
+                const weak = (cur.weakPhonemes||[]).slice(0,6);
+                chipsEl.innerHTML = weak.map(p=>`<span class="chip" title="弱项">${p}</span>`).join('');
+                chipsEl.style.display = weak.length ? '' : 'none';
+            }
+            // timeline
+            if (tlEl){
+                const segs = cur.phonemeAlignment || cur.segments || [];
+                if (!Array.isArray(segs) || !segs.length){ tlEl.style.display='none'; tlEl.innerHTML=''; return; }
+                const getEnd = s => (s.endSec!=null?s.endSec:(s.end!=null?s.end:0));
+                const getStart = s => (s.startSec!=null?s.startSec:(s.start!=null?s.start:0));
+                const getPh = s => (s.p!=null?s.p:(s.ph!=null?s.ph:''));
+                let dur = 0.001; for (let i=0;i<segs.length;i++){ const e = getEnd(segs[i]); if (e > dur) dur = e; }
+                function toPct(t){ return Math.max(0, Math.min(100, (t/dur)*100)); }
+                tlEl.innerHTML = segs.map(s=>{
+                    const st = toPct(getStart(s));
+                    const ed = toPct(getEnd(s));
+                    const w = Math.max(0.5, ed - st);
+                    const sc = Math.round(Number(s.score)||0);
+                     const cls = sc>=85? 'seg ok' : sc>=70? 'seg warn' : 'seg bad';
+                     const label = getPh(s) || '';
+                     return `<div class="${cls}" style="left:${st}%;width:${w}%" title="${label} ${sc}">${label}</div>`;
+                }).join('');
+                tlEl.style.display = '';
+            }
+            try { if (typeof scheduleBlueClear === 'function') scheduleBlueClear(5000, true); } catch {}
+        }
+        (function bindScoreMode(){
+            const sw = document.getElementById('scoreModeSwitch');
+            if (!sw || sw.__bound) return; sw.__bound = true;
+            // 初始化激活态
+            Array.from(sw.querySelectorAll('.ms-btn')).forEach(b=> b.classList.toggle('active', b.getAttribute('data-mode')===__scoreMode));
+            sw.addEventListener('click', (e)=>{
+                const btn = e.target.closest('.ms-btn');
+                if (!btn) return;
+                const m = btn.getAttribute('data-mode');
+                if (!m) return;
+                __scoreMode = m;
+                Array.from(sw.querySelectorAll('.ms-btn')).forEach(b=> b.classList.toggle('active', b===btn));
+                if (__lastScoring){ __renderScoringFromCache(); return; }
+                if (lastRecordedBlob && (typeof scoringEnabled === 'undefined' || scoringEnabled)) { try { computeAndRenderScore(lastRecordedBlob); } catch{} }
+            }, { capture: true });
+        })();
+    </script>
+</body>
+</html>

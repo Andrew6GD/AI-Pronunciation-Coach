@@ -1,0 +1,431 @@
+/* 音标模块样式文件 */
+/* Phonetics Module CSS Styles */
+
+/* CSS变量定义 */
+:root {
+    --phonetics-primary-color: #007bff;
+    --phonetics-secondary-color: #6c757d;
+    --phonetics-success-color: #28a745;
+    --phonetics-danger-color: #dc3545;
+    --phonetics-warning-color: #ffc107;
+    --phonetics-info-color: #17a2b8;
+    --phonetics-light-color: #f8f9fa;
+    --phonetics-dark-color: #343a40;
+    
+    --phonetics-font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    --phonetics-font-size-base: 14px;
+    --phonetics-font-size-small: 12px;
+    --phonetics-font-size-large: 16px;
+    
+    --phonetics-border-radius: 4px;
+    --phonetics-border-color: #dee2e6;
+    --phonetics-box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    
+    --phonetics-spacing-xs: 4px;
+    --phonetics-spacing-sm: 8px;
+    --phonetics-spacing-md: 16px;
+    --phonetics-spacing-lg: 24px;
+    --phonetics-spacing-xl: 32px;
+}
+
+/* 音标容器基础样式 */
+.phonetics-container {
+    font-family: var(--phonetics-font-family);
+    font-size: var(--phonetics-font-size-base);
+    line-height: 1.5;
+    color: var(--phonetics-dark-color);
+}
+
+/* 音标显示区域 */
+.phonetics-display {
+    padding: var(--phonetics-spacing-md);
+    border: 1px solid var(--phonetics-border-color);
+    border-radius: var(--phonetics-border-radius);
+    background-color: #fff;
+    margin-bottom: var(--phonetics-spacing-md);
+}
+
+/* 单词和音标令牌样式 */
+.phonetics-token {
+    display: inline-block;
+    margin: var(--phonetics-spacing-xs);
+    padding: var(--phonetics-spacing-xs) var(--phonetics-spacing-sm);
+    border-radius: var(--phonetics-border-radius);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+    vertical-align: top;
+}
+
+.phonetics-token:hover {
+    background-color: var(--phonetics-light-color);
+    box-shadow: var(--phonetics-box-shadow);
+}
+
+.phonetics-token.active {
+    background-color: var(--phonetics-primary-color);
+    color: white;
+}
+
+/* 单词文本样式 */
+.phonetics-word {
+    display: block;
+    font-weight: 500;
+    margin-bottom: var(--phonetics-spacing-xs);
+}
+
+/* 音标文本样式 */
+.phonetics-ipa {
+    display: block;
+    font-family: 'Times New Roman', serif;
+    font-size: var(--phonetics-font-size-small);
+    color: var(--phonetics-secondary-color);
+    font-style: italic;
+    text-align: center;
+}
+
+/* 音标显示/隐藏状态 */
+.phonetics-token.hide-ipa .phonetics-ipa {
+    display: none;
+}
+
+.phonetics-token.show-ipa .phonetics-ipa {
+    display: block;
+}
+
+/* 控制按钮样式 */
+.phonetics-controls {
+    display: flex;
+    gap: var(--phonetics-spacing-sm);
+    margin-bottom: var(--phonetics-spacing-md);
+    flex-wrap: wrap;
+}
+
+.phonetics-btn {
+    padding: var(--phonetics-spacing-sm) var(--phonetics-spacing-md);
+    border: 1px solid var(--phonetics-border-color);
+    border-radius: var(--phonetics-border-radius);
+    background-color: #fff;
+    color: var(--phonetics-dark-color);
+    cursor: pointer;
+    font-size: var(--phonetics-font-size-base);
+    font-family: var(--phonetics-font-family);
+    transition: all 0.2s ease;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 80px;
+}
+
+.phonetics-btn:hover {
+    background-color: var(--phonetics-light-color);
+    border-color: var(--phonetics-primary-color);
+}
+
+.phonetics-btn:active {
+    transform: translateY(1px);
+}
+
+.phonetics-btn.active {
+    background-color: var(--phonetics-primary-color);
+    color: white;
+    border-color: var(--phonetics-primary-color);
+}
+
+/* 按钮变体 */
+.phonetics-btn-primary {
+    background-color: var(--phonetics-primary-color);
+    color: white;
+    border-color: var(--phonetics-primary-color);
+}
+
+.phonetics-btn-secondary {
+    background-color: var(--phonetics-secondary-color);
+    color: white;
+    border-color: var(--phonetics-secondary-color);
+}
+
+.phonetics-btn-success {
+    background-color: var(--phonetics-success-color);
+    color: white;
+    border-color: var(--phonetics-success-color);
+}
+
+.phonetics-btn-danger {
+    background-color: var(--phonetics-danger-color);
+    color: white;
+    border-color: var(--phonetics-danger-color);
+}
+
+.phonetics-btn-small {
+    padding: var(--phonetics-spacing-xs) var(--phonetics-spacing-sm);
+    font-size: var(--phonetics-font-size-small);
+    min-width: 60px;
+}
+
+.phonetics-btn-large {
+    padding: var(--phonetics-spacing-md) var(--phonetics-spacing-lg);
+    font-size: var(--phonetics-font-size-large);
+    min-width: 100px;
+}
+
+/* 音标切换按钮 */
+.phonetics-toggle {
+    position: relative;
+    display: inline-block;
+}
+
+.phonetics-toggle input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.phonetics-toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: var(--phonetics-secondary-color);
+    transition: 0.4s;
+    border-radius: 20px;
+    width: 50px;
+    height: 24px;
+}
+
+.phonetics-toggle-slider:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: 0.4s;
+    border-radius: 50%;
+}
+
+.phonetics-toggle input:checked + .phonetics-toggle-slider {
+    background-color: var(--phonetics-primary-color);
+}
+
+.phonetics-toggle input:checked + .phonetics-toggle-slider:before {
+    transform: translateX(26px);
+}
+
+/* 口音选择器 */
+.phonetics-accent-selector {
+    display: flex;
+    gap: var(--phonetics-spacing-xs);
+    align-items: center;
+}
+
+.phonetics-accent-selector label {
+    margin-right: var(--phonetics-spacing-sm);
+    font-weight: 500;
+}
+
+.phonetics-accent-btn {
+    padding: var(--phonetics-spacing-xs) var(--phonetics-spacing-sm);
+    border: 1px solid var(--phonetics-border-color);
+    border-radius: var(--phonetics-border-radius);
+    background-color: #fff;
+    cursor: pointer;
+    font-size: var(--phonetics-font-size-small);
+    transition: all 0.2s ease;
+}
+
+.phonetics-accent-btn.active {
+    background-color: var(--phonetics-primary-color);
+    color: white;
+    border-color: var(--phonetics-primary-color);
+}
+
+/* 输入框样式 */
+.phonetics-input {
+    width: 100%;
+    padding: var(--phonetics-spacing-sm);
+    border: 1px solid var(--phonetics-border-color);
+    border-radius: var(--phonetics-border-radius);
+    font-size: var(--phonetics-font-size-base);
+    font-family: var(--phonetics-font-family);
+    transition: border-color 0.2s ease;
+    margin-bottom: var(--phonetics-spacing-md);
+}
+
+.phonetics-input:focus {
+    outline: none;
+    border-color: var(--phonetics-primary-color);
+    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+.phonetics-textarea {
+    min-height: 100px;
+    resize: vertical;
+}
+
+/* 状态指示器 */
+.phonetics-status {
+    padding: var(--phonetics-spacing-sm);
+    border-radius: var(--phonetics-border-radius);
+    margin-bottom: var(--phonetics-spacing-md);
+    font-size: var(--phonetics-font-size-small);
+}
+
+.phonetics-status-success {
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.phonetics-status-error {
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+.phonetics-status-warning {
+    background-color: #fff3cd;
+    color: #856404;
+    border: 1px solid #ffeaa7;
+}
+
+.phonetics-status-info {
+    background-color: #d1ecf1;
+    color: #0c5460;
+    border: 1px solid #bee5eb;
+}
+
+/* 加载动画 */
+.phonetics-loading {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 3px solid var(--phonetics-light-color);
+    border-radius: 50%;
+    border-top-color: var(--phonetics-primary-color);
+    animation: phonetics-spin 1s ease-in-out infinite;
+}
+
+@keyframes phonetics-spin {
+    to { transform: rotate(360deg); }
+}
+
+/* 工具提示 */
+.phonetics-tooltip {
+    position: relative;
+    display: inline-block;
+}
+
+.phonetics-tooltip .phonetics-tooltip-text {
+    visibility: hidden;
+    width: 120px;
+    background-color: var(--phonetics-dark-color);
+    color: #fff;
+    text-align: center;
+    border-radius: var(--phonetics-border-radius);
+    padding: var(--phonetics-spacing-xs);
+    position: absolute;
+    z-index: 1;
+    bottom: 125%;
+    left: 50%;
+    margin-left: -60px;
+    opacity: 0;
+    transition: opacity 0.3s;
+    font-size: var(--phonetics-font-size-small);
+}
+
+.phonetics-tooltip .phonetics-tooltip-text::after {
+    content: "";
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    margin-left: -5px;
+    border-width: 5px;
+    border-style: solid;
+    border-color: var(--phonetics-dark-color) transparent transparent transparent;
+}
+
+.phonetics-tooltip:hover .phonetics-tooltip-text {
+    visibility: visible;
+    opacity: 1;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+    .phonetics-controls {
+        flex-direction: column;
+    }
+    
+    .phonetics-btn {
+        width: 100%;
+        margin-bottom: var(--phonetics-spacing-xs);
+    }
+    
+    .phonetics-accent-selector {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .phonetics-token {
+        margin: var(--phonetics-spacing-xs) 0;
+    }
+}
+
+@media (max-width: 480px) {
+    .phonetics-container {
+        font-size: var(--phonetics-font-size-small);
+    }
+    
+    .phonetics-display {
+        padding: var(--phonetics-spacing-sm);
+    }
+    
+    .phonetics-token {
+        padding: var(--phonetics-spacing-xs);
+    }
+}
+
+/* 深色主题支持 */
+@media (prefers-color-scheme: dark) {
+    :root {
+        --phonetics-light-color: #343a40;
+        --phonetics-dark-color: #f8f9fa;
+        --phonetics-border-color: #495057;
+    }
+    
+    .phonetics-display {
+        background-color: #212529;
+        color: var(--phonetics-dark-color);
+    }
+    
+    .phonetics-btn {
+        background-color: #343a40;
+        color: var(--phonetics-dark-color);
+        border-color: var(--phonetics-border-color);
+    }
+    
+    .phonetics-input {
+        background-color: #343a40;
+        color: var(--phonetics-dark-color);
+        border-color: var(--phonetics-border-color);
+    }
+}
+
+/* 打印样式 */
+@media print {
+    .phonetics-controls {
+        display: none;
+    }
+    
+    .phonetics-token {
+        break-inside: avoid;
+    }
+    
+    .phonetics-ipa {
+        color: #000 !important;
+    }
+}

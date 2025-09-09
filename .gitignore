@@ -103,6 +103,13 @@ jspm_packages/
 # Local Netlify folder
 .netlify
 
+# Netlify Functions build artifacts
+netlify/functions/**/*.js.map
+netlify/functions/**/node_modules/
+
+# Netlify CLI
+.netlify.toml.bak
+
 # Security - API Keys and Secrets
 *.key
 *.pem

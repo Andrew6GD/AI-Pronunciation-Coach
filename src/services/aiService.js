@@ -1,30 +1,44 @@
 // AI文本分析服务
 // 注意：在生产环境中，API密钥应该通过环境变量或后端服务管理
+import { createIntegratedPhoneticService } from './integratedPhoneticService.js'
+
+// 创建集成音标服务实例
+const integratedPhoneticService = createIntegratedPhoneticService()
 
 // 模拟AI分析结果的函数（用于演示）
-function generateMockAnalysis(text, accent = 'us') {
+async function generateMockAnalysis(text, accent = 'us') {
   const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 0)
   
-  return {
-    sentences: sentences.map((sentence, index) => {
-      const words = sentence.trim().split(/\s+/).filter(w => w.length > 0)
-      
-      return {
-        id: index,
-        text: sentence.trim(),
-        thoughtGroups: generateThoughtGroups(sentence.trim()),
-        thoughtGroupsWithSlashes: generateThoughtGroupsWithSlashes(sentence.trim()),
-        words: words.map((word, wordIndex) => ({
-          id: wordIndex,
-          text: word.replace(/[^a-zA-Z]/g, ''),
-          original: word,
-          phonetic: generatePhonetic(word.replace(/[^a-zA-Z]/g, ''), accent),
-          syllables: generateSyllables(word.replace(/[^a-zA-Z]/g, ''))
-        })),
-        structure: generateStructure(words),
-        grammarAnalysis: generateGrammarAnalysis(sentence.trim())
-      }
+  const processedSentences = []
+  
+  for (const [index, sentence] of sentences.entries()) {
+    const words = sentence.trim().split(/\s+/).filter(w => w.length > 0)
+    
+    const processedWords = []
+    for (const [wordIndex, word] of words.entries()) {
+      const cleanWord = word.replace(/[^a-zA-Z]/g, '')
+      processedWords.push({
+        id: wordIndex,
+        text: cleanWord,
+        original: word,
+        phonetic: await generatePhonetic(cleanWord, accent),
+        syllables: generateSyllables(cleanWord)
+      })
+    }
+    
+    processedSentences.push({
+      id: index,
+      text: sentence.trim(),
+      thoughtGroups: generateThoughtGroups(sentence.trim()),
+      thoughtGroupsWithSlashes: generateThoughtGroupsWithSlashes(sentence.trim()),
+      words: processedWords,
+      structure: generateStructure(words),
+      grammarAnalysis: generateGrammarAnalysis(sentence.trim())
     })
+  }
+  
+  return {
+    sentences: processedSentences
   }
 }
 
@@ -141,665 +155,89 @@ function generateGrammarAnalysis(sentence) {
 }
 
 // 生成音标（支持美式和英式）
-function generatePhonetic(word, accent = 'us') {
-  const phoneticMap = {
-    'hello': {
-      us: '/həˈloʊ/',
-      uk: '/həˈləʊ/'
-    },
-    'world': {
-      us: '/wɜːrld/',
-      uk: '/wɜːld/'
-    },
-    'pronunciation': {
-      us: '/prəˌnʌnsiˈeɪʃən/',
-      uk: '/prəˌnʌnsiˈeɪʃən/'
-    },
-    'practice': {
-      us: '/ˈpræktɪs/',
-      uk: '/ˈpræktɪs/'
-    },
-    'english': {
-      us: '/ˈɪŋɡlɪʃ/',
-      uk: '/ˈɪŋɡlɪʃ/'
-    },
-    'learning': {
-      us: '/ˈlɜːrnɪŋ/',
-      uk: '/ˈlɜːnɪŋ/'
-    },
-    'artificial': {
-      us: '/ˌɑːrtɪˈfɪʃəl/',
-      uk: '/ˌɑːtɪˈfɪʃəl/'
-    },
-    'intelligence': {
-      us: '/ɪnˈtelɪdʒəns/',
-      uk: '/ɪnˈtelɪdʒəns/'
-    },
-    'coach': {
-      us: '/koʊtʃ/',
-      uk: '/kəʊtʃ/'
-    },
-    'speech': {
-      us: '/spiːtʃ/',
-      uk: '/spiːtʃ/'
-    },
-    'recognition': {
-      us: '/ˌrekəɡˈnɪʃən/',
-      uk: '/ˌrekəɡˈnɪʃən/'
-    },
-    'feedback': {
-      us: '/ˈfiːdbæk/',
-      uk: '/ˈfiːdbæk/'
-    },
-    'improve': {
-      us: '/ɪmˈpruːv/',
-      uk: '/ɪmˈpruːv/'
-    },
-    'accent': {
-      us: '/ˈæksent/',
-      uk: '/ˈæksənt/'
-    },
-    'fluency': {
-      us: '/ˈfluːənsi/',
-      uk: '/ˈfluːənsi/'
-    },
-    'water': {
-      us: '/ˈwɔːtər/',
-      uk: '/ˈwɔːtə/'
-    },
-    'dance': {
-      us: '/dæns/',
-      uk: '/dɑːns/'
-    },
-    'ask': {
-      us: '/æsk/',
-      uk: '/ɑːsk/'
-    },
-    'can': {
-      us: '/kæn/',
-      uk: '/kæn/'
-    },
-    'cannot': {
-      us: '/ˈkænɑːt/',
-      uk: '/ˈkænɒt/'
-    },
-    // 添加更多常用单词
-    'a': {
-      us: '/ə/',
-      uk: '/ə/'
-    },
-    'the': {
-      us: '/ðə/',
-      uk: '/ðə/'
-    },
-    'and': {
-      us: '/ænd/',
-      uk: '/ænd/'
-    },
-    'to': {
-      us: '/tuː/',
-      uk: '/tuː/'
-    },
-    'of': {
-      us: '/ʌv/',
-      uk: '/ɒv/'
-    },
-    'in': {
-      us: '/ɪn/',
-      uk: '/ɪn/'
-    },
-    'is': {
-      us: '/ɪz/',
-      uk: '/ɪz/'
-    },
-    'it': {
-      us: '/ɪt/',
-      uk: '/ɪt/'
-    },
-    'you': {
-      us: '/juː/',
-      uk: '/juː/'
-    },
-    'that': {
-      us: '/ðæt/',
-      uk: '/ðæt/'
-    },
-    'he': {
-      us: '/hiː/',
-      uk: '/hiː/'
-    },
-    'was': {
-      us: '/wʌz/',
-      uk: '/wɒz/'
-    },
-    'for': {
-      us: '/fɔːr/',
-      uk: '/fɔː/'
-    },
-    'are': {
-      us: '/ɑːr/',
-      uk: '/ɑː/'
-    },
-    'with': {
-      us: '/wɪθ/',
-      uk: '/wɪθ/'
-    },
-    'as': {
-      us: '/æz/',
-      uk: '/æz/'
-    },
-    'his': {
-      us: '/hɪz/',
-      uk: '/hɪz/'
-    },
-    'they': {
-      us: '/ðeɪ/',
-      uk: '/ðeɪ/'
-    },
-    'be': {
-      us: '/biː/',
-      uk: '/biː/'
-    },
-    'at': {
-      us: '/æt/',
-      uk: '/æt/'
-    },
-    'one': {
-      us: '/wʌn/',
-      uk: '/wʌn/'
-    },
-    'have': {
-      us: '/hæv/',
-      uk: '/hæv/'
-    },
-    'this': {
-      us: '/ðɪs/',
-      uk: '/ðɪs/'
-    },
-    'from': {
-      us: '/frʌm/',
-      uk: '/frɒm/'
-    },
-    'or': {
-      us: '/ɔːr/',
-      uk: '/ɔː/'
-    },
-    'had': {
-      us: '/hæd/',
-      uk: '/hæd/'
-    },
-    'by': {
-      us: '/baɪ/',
-      uk: '/baɪ/'
-    },
-    'but': {
-      us: '/bʌt/',
-      uk: '/bʌt/'
-    },
-    'not': {
-      us: '/nɑːt/',
-      uk: '/nɒt/'
-    },
-    'what': {
-      us: '/wʌt/',
-      uk: '/wɒt/'
-    },
-    'all': {
-      us: '/ɔːl/',
-      uk: '/ɔːl/'
-    },
-    'were': {
-      us: '/wɜːr/',
-      uk: '/wɜː/'
-    },
-    'we': {
-      us: '/wiː/',
-      uk: '/wiː/'
-    },
-    'when': {
-      us: '/wen/',
-      uk: '/wen/'
-    },
-    'your': {
-      us: '/jʊr/',
-      uk: '/jɔː/'
-    },
-    'said': {
-      us: '/sed/',
-      uk: '/sed/'
-    },
-    'there': {
-      us: '/ðer/',
-      uk: '/ðeə/'
-    },
-    'each': {
-      us: '/iːtʃ/',
-      uk: '/iːtʃ/'
-    },
-    'which': {
-      us: '/wɪtʃ/',
-      uk: '/wɪtʃ/'
-    },
-    'do': {
-      us: '/duː/',
-      uk: '/duː/'
-    },
-    'how': {
-      us: '/haʊ/',
-      uk: '/haʊ/'
-    },
-    'their': {
-      us: '/ðer/',
-      uk: '/ðeə/'
-    },
-    'if': {
-      us: '/ɪf/',
-      uk: '/ɪf/'
-    },
-    'will': {
-      us: '/wɪl/',
-      uk: '/wɪl/'
-    },
-    'up': {
-      us: '/ʌp/',
-      uk: '/ʌp/'
-    },
-    'other': {
-      us: '/ˈʌðər/',
-      uk: '/ˈʌðə/'
-    },
-    'about': {
-      us: '/əˈbaʊt/',
-      uk: '/əˈbaʊt/'
-    },
-    'out': {
-      us: '/aʊt/',
-      uk: '/aʊt/'
-    },
-    'many': {
-      us: '/ˈmeni/',
-      uk: '/ˈmeni/'
-    },
-    'time': {
-      us: '/taɪm/',
-      uk: '/taɪm/'
-    },
-    'very': {
-      us: '/ˈveri/',
-      uk: '/ˈveri/'
-    },
-    'when': {
-      us: '/wen/',
-      uk: '/wen/'
-    },
-    'much': {
-      us: '/mʌtʃ/',
-      uk: '/mʌtʃ/'
-    },
-    'new': {
-      us: '/nuː/',
-      uk: '/njuː/'
-    },
-    'way': {
-      us: '/weɪ/',
-      uk: '/weɪ/'
-    },
-    'well': {
-      us: '/wel/',
-      uk: '/wel/'
-    },
-    'get': {
-      us: '/ɡet/',
-      uk: '/ɡet/'
-    },
-    'use': {
-      us: '/juːz/',
-      uk: '/juːz/'
-    },
-    'man': {
-      us: '/mæn/',
-      uk: '/mæn/'
-    },
-    'day': {
-      us: '/deɪ/',
-      uk: '/deɪ/'
-    },
-    'too': {
-      us: '/tuː/',
-      uk: '/tuː/'
-    },
-    'any': {
-      us: '/ˈeni/',
-      uk: '/ˈeni/'
-    },
-    'may': {
-      us: '/meɪ/',
-      uk: '/meɪ/'
-    },
-    'say': {
-      us: '/seɪ/',
-      uk: '/seɪ/'
-    },
-    'she': {
-      us: '/ʃiː/',
-      uk: '/ʃiː/'
-    },
-    'its': {
-      us: '/ɪts/',
-      uk: '/ɪts/'
-    },
-    'our': {
-      us: '/aʊr/',
-      uk: '/aʊə/'
-    },
-    'two': {
-      us: '/tuː/',
-      uk: '/tuː/'
-    },
-    'more': {
-      us: '/mɔːr/',
-      uk: '/mɔː/'
-    },
-    'these': {
-      us: '/ðiːz/',
-      uk: '/ðiːz/'
-    },
-    'want': {
-      us: '/wɑːnt/',
-      uk: '/wɒnt/'
-    },
-    'first': {
-      us: '/fɜːrst/',
-      uk: '/fɜːst/'
-    },
-    'also': {
-      us: '/ˈɔːlsoʊ/',
-      uk: '/ˈɔːlsəʊ/'
-    },
-    'after': {
-      us: '/ˈæftər/',
-      uk: '/ˈɑːftə/'
-    },
-    'back': {
-      us: '/bæk/',
-      uk: '/bæk/'
-    },
-    'work': {
-      us: '/wɜːrk/',
-      uk: '/wɜːk/'
-    },
-    'life': {
-      us: '/laɪf/',
-      uk: '/laɪf/'
-    },
-    'only': {
-      us: '/ˈoʊnli/',
-      uk: '/ˈəʊnli/'
-    },
-    'know': {
-      us: '/noʊ/',
-      uk: '/nəʊ/'
-    },
-    'little': {
-      us: '/ˈlɪtəl/',
-      uk: '/ˈlɪtəl/'
-    },
-    'good': {
-      us: '/ɡʊd/',
-      uk: '/ɡʊd/'
-    },
-    'year': {
-      us: '/jɪr/',
-      uk: '/jɪə/'
-    },
-    'come': {
-      us: '/kʌm/',
-      uk: '/kʌm/'
-    },
-    'could': {
-      us: '/kʊd/',
-      uk: '/kʊd/'
-    },
-    'see': {
-      us: '/siː/',
-      uk: '/siː/'
-    },
-    'him': {
-      us: '/hɪm/',
-      uk: '/hɪm/'
-    },
-    'long': {
-      us: '/lɔːŋ/',
-      uk: '/lɒŋ/'
-    },
-    'make': {
-      us: '/meɪk/',
-      uk: '/meɪk/'
-    },
-    'thing': {
-      us: '/θɪŋ/',
-      uk: '/θɪŋ/'
-    },
-    'over': {
-      us: '/ˈoʊvər/',
-      uk: '/ˈəʊvə/'
-    },
-    'think': {
-      us: '/θɪŋk/',
-      uk: '/θɪŋk/'
-    },
-    'school': {
-      us: '/skuːl/',
-      uk: '/skuːl/'
-    },
-    'still': {
-      us: '/stɪl/',
-      uk: '/stɪl/'
-    },
-    'try': {
-      us: '/traɪ/',
-      uk: '/traɪ/'
-    },
-    'last': {
-      us: '/læst/',
-      uk: '/lɑːst/'
-    },
-    'should': {
-      us: '/ʃʊd/',
-      uk: '/ʃʊd/'
-    },
-    'home': {
-      us: '/hoʊm/',
-      uk: '/həʊm/'
-    },
-    'give': {
-      us: '/ɡɪv/',
-      uk: '/ɡɪv/'
-    },
-    'most': {
-      us: '/moʊst/',
-      uk: '/məʊst/'
-    },
-    'hand': {
-      us: '/hænd/',
-      uk: '/hænd/'
-    },
-    'high': {
-      us: '/haɪ/',
-      uk: '/haɪ/'
-    },
-    'keep': {
-      us: '/kiːp/',
-      uk: '/kiːp/'
-    },
-    'old': {
-      us: '/oʊld/',
-      uk: '/əʊld/'
-    },
-    'great': {
-      us: '/ɡreɪt/',
-      uk: '/ɡreɪt/'
-    },
-    'same': {
-      us: '/seɪm/',
-      uk: '/seɪm/'
-    },
-    'big': {
-      us: '/bɪɡ/',
-      uk: '/bɪɡ/'
-    },
-    'group': {
-      us: '/ɡruːp/',
-      uk: '/ɡruːp/'
-    },
-    'right': {
-      us: '/raɪt/',
-      uk: '/raɪt/'
-    },
-    'system': {
-      us: '/ˈsɪstəm/',
-      uk: '/ˈsɪstəm/'
-    },
-    'those': {
-      us: '/ðoʊz/',
-      uk: '/ðəʊz/'
-    },
-    'part': {
-      us: '/pɑːrt/',
-      uk: '/pɑːt/'
-    },
-    'take': {
-      us: '/teɪk/',
-      uk: '/teɪk/'
-    },
-    'case': {
-      us: '/keɪs/',
-      uk: '/keɪs/'
-    },
-    'early': {
-      us: '/ˈɜːrli/',
-      uk: '/ˈɜːli/'
-    },
-    'number': {
-      us: '/ˈnʌmbər/',
-      uk: '/ˈnʌmbə/'
-    },
-    'point': {
-      us: '/pɔɪnt/',
-      uk: '/pɔɪnt/'
-    },
-    'government': {
-      us: '/ˈɡʌvərnmənt/',
-      uk: '/ˈɡʌvənmənt/'
-    },
-    'company': {
-      us: '/ˈkʌmpəni/',
-      uk: '/ˈkʌmpəni/'
-    },
-    'fact': {
-      us: '/fækt/',
-      uk: '/fækt/'
-    },
-    'hand': {
-      us: '/hænd/',
-      uk: '/hænd/'
-    },
-    'place': {
-      us: '/pleɪs/',
-      uk: '/pleɪs/'
-    },
-    'right': {
-      us: '/raɪt/',
-      uk: '/raɪt/'
-    },
-    'public': {
-      us: '/ˈpʌblɪk/',
-      uk: '/ˈpʌblɪk/'
-    },
-    'become': {
-      us: '/bɪˈkʌm/',
-      uk: '/bɪˈkʌm/'
-    },
-    'problem': {
-      us: '/ˈprɑːbləm/',
-      uk: '/ˈprɒbləm/'
-    },
-    'important': {
-      us: '/ɪmˈpɔːrtənt/',
-      uk: '/ɪmˈpɔːtənt/'
-    },
-    'different': {
-      us: '/ˈdɪfərənt/',
-      uk: '/ˈdɪfərənt/'
-    },
-    'small': {
-      us: '/smɔːl/',
-      uk: '/smɔːl/'
-    },
-    'large': {
-      us: '/lɑːrdʒ/',
-      uk: '/lɑːdʒ/'
-    },
-    'national': {
-      us: '/ˈnæʃənəl/',
-      uk: '/ˈnæʃənəl/'
-    },
-    'young': {
-      us: '/jʌŋ/',
-      uk: '/jʌŋ/'
-    },
-    'social': {
-      us: '/ˈsoʊʃəl/',
-      uk: '/ˈsəʊʃəl/'
-    },
-    'local': {
-      us: '/ˈloʊkəl/',
-      uk: '/ˈləʊkəl/'
-    },
-    'long': {
-      us: '/lɔːŋ/',
-      uk: '/lɒŋ/'
-    },
-    'little': {
-      us: '/ˈlɪtəl/',
-      uk: '/ˈlɪtəl/'
-    },
-    'own': {
-      us: '/oʊn/',
-      uk: '/əʊn/'
-    },
-    'general': {
-      us: '/ˈdʒenərəl/',
-      uk: '/ˈdʒenərəl/'
-    },
-    'open': {
-      us: '/ˈoʊpən/',
-      uk: '/ˈəʊpən/'
-    },
-    'opens': {
-      us: '/ˈoʊpənz/',
-      uk: '/ˈəʊpənz/'
-    },
-    'foreign': {
-      us: '/ˈfɔːrən/',
-      uk: '/ˈfɒrən/'
-    },
-    'language': {
-      us: '/ˈlæŋɡwɪdʒ/',
-      uk: '/ˈlæŋɡwɪdʒ/'
-    },
-    'opportunities': {
-      us: '/ˌɑːpərˈtuːnətiz/',
-      uk: '/ˌɒpəˈtjuːnətiz/'
+async function generatePhonetic(word, accent = 'us') {
+  try {
+    // 确保集成音标服务已初始化
+    await integratedPhoneticService.initialize();
+    
+    // 使用集成音标服务获取音标
+    const result = await integratedPhoneticService.getPhonemes(word, {
+      accent: accent === 'uk' ? 'gb' : 'us',
+      format: 'ipa'
+    });
+    
+    if (result.success && result.phonemes) {
+      // 确保音标格式统一（添加双斜杠）
+      let phonetic = result.phonemes;
+      if (!phonetic.startsWith('/')) {
+        phonetic = '/' + phonetic;
+      }
+      if (!phonetic.endsWith('/')) {
+        phonetic = phonetic + '/';
+      }
+      return phonetic;
     }
+  } catch (error) {
+    console.warn('Integrated phonetic service failed for word:', word, error);
   }
   
-  const wordLower = word.toLowerCase()
-  if (phoneticMap[wordLower]) {
-    return phoneticMap[wordLower][accent] || phoneticMap[wordLower]['us']
+  // 如果集成服务失败，使用简化的回退机制
+  return generateFallbackPhonetic(word);
+}
+
+// 生成fallback音标的辅助函数（基于规则）
+function generateFallbackPhonetic(word) {
+  // 基于常见的英语发音规则生成近似音标
+  let phonetic = word
+  
+  // 简单的音标转换规则
+  const rules = [
+    // 元音规则
+    { pattern: /a([^e]|$)/g, replacement: 'æ' },
+    { pattern: /e([^e]|$)/g, replacement: 'e' },
+    { pattern: /i([^e]|$)/g, replacement: 'ɪ' },
+    { pattern: /o([^e]|$)/g, replacement: 'ɒ' },
+    { pattern: /u([^e]|$)/g, replacement: 'ʌ' },
+    { pattern: /ee/g, replacement: 'iː' },
+    { pattern: /oo/g, replacement: 'uː' },
+    { pattern: /ar/g, replacement: 'ɑːr' },
+    { pattern: /er/g, replacement: 'ər' },
+    { pattern: /ir/g, replacement: 'ɪr' },
+    { pattern: /or/g, replacement: 'ɔːr' },
+    { pattern: /ur/g, replacement: 'ɜːr' },
+    // 辅音规则
+    { pattern: /th/g, replacement: 'θ' },
+    { pattern: /sh/g, replacement: 'ʃ' },
+    { pattern: /ch/g, replacement: 'tʃ' },
+    { pattern: /ng/g, replacement: 'ŋ' },
+    { pattern: /ph/g, replacement: 'f' },
+    { pattern: /gh/g, replacement: 'f' },
+    { pattern: /ck/g, replacement: 'k' },
+    { pattern: /x/g, replacement: 'ks' }
+  ]
+  
+  rules.forEach(rule => {
+    phonetic = phonetic.replace(rule.pattern, rule.replacement)
+  })
+  
+  return `/ˈ${phonetic}/`
+}
+
+// 生成高级fallback音标的辅助函数（使用 eSpeak-NG + 规则）
+async function generateAdvancedFallbackPhonetic(word, accent = 'us') {
+  try {
+    // 首先尝试使用 eSpeak-NG 生成音标
+    const voice = accent === 'uk' ? 'en-gb' : 'en-us'
+    const ipaResult = await eSpeakService.textToIPA(word, voice)
+    if (ipaResult) {
+      return ipaResult
+    }
+  } catch (error) {
+    console.warn('eSpeak-NG fallback failed:', error)
   }
   
-  return `/ˈ${wordLower}/`
+  // 如果 eSpeak-NG 失败，使用规则生成
+  return generateFallbackPhonetic(word)
 }
 
 // 生成音节分割
@@ -976,45 +414,51 @@ function generateStructure(words) {
 // 主要的文本分析函数
 export async function analyzeText(text, accent = 'us') {
   try {
-    // 调用Netlify函数代理服务器
-    const response = await fetch('/.netlify/functions/analyze', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ 
-        text: text, 
-        accent: accent,
-        type: 'analysis' 
+    // 检查是否在生产环境
+    const isProduction = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1'
+    
+    if (isProduction) {
+      // 生产环境：调用Netlify函数代理服务器
+      const response = await fetch('/.netlify/functions/analyze', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ 
+          text: text, 
+          accent: accent,
+          type: 'analysis' 
+        })
       })
-    })
-    
-    if (!response.ok) {
-      throw new Error(`API请求失败: ${response.status}`)
-    }
-    
-    const data = await response.json()
-    
-    // 如果API返回了结构化数据，直接使用
-    if (data.candidates && data.candidates[0] && data.candidates[0].content) {
-      const content = data.candidates[0].content.parts[0].text
-      try {
-        const parsedContent = JSON.parse(content)
-        return parsedContent
-      } catch (parseError) {
-        console.warn('API返回的JSON解析失败，使用备用分析:', parseError)
-        return generateMockAnalysis(text, accent)
+      
+      if (!response.ok) {
+        throw new Error(`API请求失败: ${response.status}`)
+      }
+      
+      const data = await response.json()
+      
+      // 如果API返回了结构化数据，直接使用
+      if (data.candidates && data.candidates[0] && data.candidates[0].content) {
+        const content = data.candidates[0].content.parts[0].text
+        try {
+          const parsedContent = JSON.parse(content)
+          return parsedContent
+        } catch (parseError) {
+          console.warn('API返回的JSON解析失败，使用备用分析:', parseError)
+          return await generateMockAnalysis(text, accent)
+        }
       }
     }
     
-    // 如果API调用失败，使用备用分析
-    return generateMockAnalysis(text, accent)
+    // 开发环境或API调用失败：使用备用分析
+    console.log('使用本地备用分析功能')
+    return await generateMockAnalysis(text, accent)
     
   } catch (error) {
     console.error('AI分析错误:', error)
     // 如果网络请求失败，使用本地备用分析
     console.warn('使用本地备用分析功能')
-    return generateMockAnalysis(text, accent)
+    return await generateMockAnalysis(text, accent)
   }
 }
 

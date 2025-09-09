@@ -1,6 +1,8 @@
 import React, { useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { X, Send } from 'lucide-react'
+import emailjs from '@emailjs/browser'
+import CoffeeGameModal from './CoffeeGameModal'
 import './FloatingActions.css'
 
 // 反馈图标组件
@@ -44,14 +46,32 @@ const FloatingActions = () => {
     if (!feedback.trim()) return
     
     setIsSubmitting(true)
-    // 模拟提交反馈
-    await new Promise(resolve => setTimeout(resolve, 1000))
     
-    alert('感谢您的反馈！我们会认真考虑您的建议。')
-    setFeedback('')
-    setEmail('')
-    setShowFeedback(false)
-    setIsSubmitting(false)
+    try {
+      // 使用 EmailJS 发送邮件
+      const templateParams = {
+        user_email: email || '未提供邮箱',
+        message: feedback,
+        to_email: 'design.andrewliu@gmail.com'
+      }
+      
+      await emailjs.send(
+        import.meta.env.VITE_EMAILJS_SERVICE_ID,
+        import.meta.env.VITE_EMAILJS_TEMPLATE_ID,
+        templateParams,
+        import.meta.env.VITE_EMAILJS_PUBLIC_KEY
+      )
+      
+      alert('感谢您的反馈！邮件已成功发送，我们会认真考虑您的建议。')
+      setFeedback('')
+      setEmail('')
+      setShowFeedback(false)
+    } catch (error) {
+      console.error('发送邮件失败:', error)
+      alert('发送失败，请稍后重试或直接联系我们：design.andrewliu@gmail.com')
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -59,13 +79,19 @@ const FloatingActions = () => {
       <div className="floating-actions floating-actions-ready">
         <button
           className="fab fab-feedback"
-          onClick={() => setShowFeedback(true)}
+          onClick={() => {
+            setShowSupport(false) // 关闭支持弹窗
+            setShowFeedback(true)
+          }}
         >
           <FeedbackIcon />
         </button>
         <button
           className="fab fab-support"
-          onClick={() => setShowSupport(true)}
+          onClick={() => {
+            setShowFeedback(false) // 关闭反馈弹窗
+            setShowSupport(true)
+          }}
         >
           <SupportIcon />
         </button>
@@ -179,10 +205,10 @@ const FloatingActions = () => {
                 <div className="cost-breakdown">
                   <h4>💰 项目成本</h4>
                   <ul>
-                    <li>AI模型调用费用 (Gemini API)</li>
                     <li>语音合成服务费用 (TTS API)</li>
-                    <li>服务器托管费用</li>
-                    <li>开发维护时间</li>
+                    <li>开发和测试</li>
+                    <li>日常维护管理</li>
+                    <li>……</li>
                   </ul>
                 </div>
                 
@@ -192,10 +218,10 @@ const FloatingActions = () => {
                     <button 
                       className="support-btn github"
                       onClick={() => {
-                        alert('感谢您的支持！\n\n如果这个项目对您有帮助，请考虑在GitHub上给我们一个⭐Star，这对我们意义重大！\n\n项目地址：https://github.com/your-repo/ai-pronunciation-coach')
+                        window.open('https://github.com/Andrew6GD?tab=repositories', '_blank')
                       }}
                     >
-                      ⭐ GitHub Star
+                      ⭐ GitHub
                     </button>
                     <button 
                       className="support-btn share"
@@ -207,7 +233,7 @@ const FloatingActions = () => {
                       className="support-btn donate"
                       onClick={() => setShowDonateModal(true)}
                     >
-                      ☕ 请我喝咖啡
+                      ☕ 请我喝咖啡<span className="subtext">（小游戏）</span>
                     </button>
                   </div>
                 </div>
@@ -257,7 +283,7 @@ const FloatingActions = () => {
                   <button 
                     className="share-btn wechat"
                     onClick={() => {
-                      navigator.clipboard.writeText('推荐一个超棒的AI英语发音教练：http://localhost:3000 完全免费，实时语音识别和发音纠正！')
+                      navigator.clipboard.writeText('推荐一个超棒的AI英语发音教练：https://aipronunciationcoach.netlify.app/ 完全免费，实时语音识别和发音纠正！')
                       alert('分享文案已复制到剪贴板！\n\n您可以粘贴到微信、QQ或其他社交平台分享给朋友。')
                     }}
                   >
@@ -265,23 +291,12 @@ const FloatingActions = () => {
                   </button>
                   
                   <button 
-                    className="share-btn email"
+                    className="share-btn xiaohongshu"
                     onClick={() => {
-                      const subject = encodeURIComponent('推荐：免费AI英语发音教练')
-                      const body = encodeURIComponent('我发现了一个很棒的AI英语发音教练工具：http://localhost:3000\n\n特点：\n- 完全免费使用\n- 实时语音识别\n- 智能发音纠正\n- 句子结构分析\n\n推荐你试试看！')
-                      alert(`邮件内容已准备好！\n\n主题：${decodeURIComponent(subject)}\n\n您可以复制以下内容发送邮件：\n${decodeURIComponent(body)}`)
+                      window.open('https://www.xiaohongshu.com/user/profile/593e471d82ec3911ec945324', '_blank')
                     }}
                   >
-                    📧 邮件推荐
-                  </button>
-                  
-                  <button 
-                    className="share-btn social"
-                    onClick={() => {
-                      alert('感谢您的支持！\n\n您可以：\n1. 在朋友圈分享截图\n2. 在微博推荐\n3. 在技术社区分享\n4. 告诉身边学英语的朋友\n\n每一次分享都能帮助更多人！')
-                    }}
-                  >
-                    🌟 其他方式
+                    📱 小红书点个赞
                   </button>
                 </div>
               </div>
@@ -290,91 +305,11 @@ const FloatingActions = () => {
         )}
       </AnimatePresence>
 
-      {/* 捐赠弹窗 */}
-      <AnimatePresence>
-        {showDonateModal && (
-          <motion.div
-            className="modal-overlay"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => setShowDonateModal(false)}
-          >
-            <motion.div
-              className="modal-content"
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.8, opacity: 0 }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="modal-header">
-                <h3>☕ 请我喝咖啡</h3>
-                <button 
-                  className="close-btn"
-                  onClick={() => setShowDonateModal(false)}
-                >
-                  <X size={20} />
-                </button>
-              </div>
-              
-              <div className="donate-content">
-                <p className="donate-description">
-                  如果这个项目对您有帮助，请考虑支持一下开发者！您的支持是我们持续改进的最大动力！
-                </p>
-                
-                <div className="donate-options">
-                  <div className="donate-method">
-                    <h4>💰 支付宝</h4>
-                    <div className="qr-placeholder">
-                      <div className="qr-code">📱</div>
-                      <p>扫码支付</p>
-                    </div>
-                    <button 
-                      className="copy-btn"
-                      onClick={() => {
-                        navigator.clipboard.writeText('your-alipay-account@example.com')
-                        alert('支付宝账号已复制到剪贴板！')
-                      }}
-                    >
-                      复制账号
-                    </button>
-                  </div>
-                  
-                  <div className="donate-method">
-                    <h4>💚 微信支付</h4>
-                    <div className="qr-placeholder">
-                      <div className="qr-code">📱</div>
-                      <p>扫码支付</p>
-                    </div>
-                    <button 
-                      className="copy-btn"
-                      onClick={() => {
-                        alert('微信支付二维码\n\n请使用微信扫一扫功能扫描二维码进行支付。\n\n感谢您的支持！')
-                      }}
-                    >
-                      查看二维码
-                    </button>
-                  </div>
-                </div>
-                
-                <div className="donate-amounts">
-                  <p>💝 建议金额：</p>
-                  <div className="amount-buttons">
-                    <button className="amount-btn" onClick={() => alert('感谢您的5元支持！☕')}>¥5</button>
-                    <button className="amount-btn" onClick={() => alert('感谢您的10元支持！🥤')}>¥10</button>
-                    <button className="amount-btn" onClick={() => alert('感谢您的20元支持！🍰')}>¥20</button>
-                    <button className="amount-btn" onClick={() => alert('感谢您的50元支持！🎁')}>¥50</button>
-                  </div>
-                </div>
-                
-                <p className="donate-thanks">
-                  💖 无论金额大小，您的每一份心意我们都深深感激！
-                </p>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* 咖啡游戏弹窗 */}
+      <CoffeeGameModal 
+        isOpen={showDonateModal} 
+        onClose={() => setShowDonateModal(false)} 
+      />
     </>
   )
 }

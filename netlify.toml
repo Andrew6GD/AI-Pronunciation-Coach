@@ -20,7 +20,8 @@
   status = 200
 
 # 环境变量（在Netlify控制台中设置）
-# GOOGLE_API_KEY = "your-google-api-key"
+# AZURE_SPEECH_KEY = "your-azure-speech-key"
+# AZURE_SPEECH_REGION = "eastus"
 
 # 头部设置
 [[headers]]
@@ -30,6 +31,7 @@
     X-XSS-Protection = "1; mode=block"
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self' /.netlify/functions/*;"
 
 # API函数的CORS设置
 [[headers]]

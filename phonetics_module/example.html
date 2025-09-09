@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>音标模块使用示例 - Phonetics Module Example</title>
+    <link rel="stylesheet" href="phonetics.css">
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .example-section {
+            background: white;
+            margin: 20px 0;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .example-title {
+            color: #333;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        .code-block {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 10px 0;
+            overflow-x: auto;
+        }
+        .code-block code {
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+        .demo-area {
+            border: 2px dashed #dee2e6;
+            padding: 20px;
+            margin: 15px 0;
+            border-radius: 4px;
+            background: #fafafa;
+        }
+        .feature-list {
+            list-style-type: none;
+            padding: 0;
+        }
+        .feature-list li {
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+        }
+        .feature-list li:before {
+            content: "✓";
+            color: #28a745;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>音标模块使用示例</h1>
+    <p>这个示例展示了如何使用音标模块来为英文文本添加音标显示功能。</p>
+
+    <!-- 基础使用示例 -->
+    <div class="example-section">
+        <h2 class="example-title">1. 基础使用示例</h2>
+        <p>最简单的使用方式：</p>
+        
+        <div class="code-block">
+            <code>
+// 1. 引入模块文件
+&lt;script src="phonetics-data.js"&gt;&lt;/script&gt;
+&lt;script src="phonetics-core.js"&gt;&lt;/script&gt;
+&lt;script src="phonetics-ui.js"&gt;&lt;/script&gt;
+
+// 2. 创建音标实例
+const phonetics = createPhoneticsCore();
+const ui = createPhoneticsUI('container-id', phonetics);
+
+// 3. 设置文本并显示音标
+ui.setText('Hello world');
+ui.showPhonetics();
+            </code>
+        </div>
+
+        <div class="demo-area">
+            <h4>演示区域：</h4>
+            <div class="phonetics-controls">
+                <button class="phonetics-btn phonetics-btn-primary" onclick="demo1.showPhonetics()">显示音标</button>
+                <button class="phonetics-btn" onclick="demo1.hidePhonetics()">隐藏音标</button>
+                <div class="phonetics-accent-selector">
+                    <label>口音：</label>
+                    <button class="phonetics-accent-btn active" onclick="demo1.setAccent('us')">美式</button>
+                    <button class="phonetics-accent-btn" onclick="demo1.setAccent('uk')">英式</button>
+                </div>
+            </div>
+            <div id="demo1-container" class="phonetics-container">
+                <div class="phonetics-display" id="demo1-display">
+                    <!-- 音标内容将在这里显示 -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 高级功能示例 -->
+    <div class="example-section">
+        <h2 class="example-title">2. 高级功能示例</h2>
+        <p>包含自定义字典、事件监听等功能：</p>
+        
+        <div class="code-block">
+            <code>
+// 创建带配置的音标实例
+const phonetics = createPhoneticsCore({
+    accent: 'uk',  // 默认英式发音
+    customDict: {  // 自定义字典
+        'hello': { us: 'həˈloʊ', uk: 'həˈləʊ' },
+        'world': { us: 'wɜːrld', uk: 'wɜːld' }
+    }
+});
+
+// 创建UI实例并监听事件
+const ui = createPhoneticsUI('container', phonetics);
+ui.on('wordClick', (word, phonetic) => {
+    console.log(`点击了单词: ${word}, 音标: ${phonetic}`);
+});
+ui.on('accentChange', (accent) => {
+    console.log(`切换到${accent}口音`);
+});
+            </code>
+        </div>
+
+        <div class="demo-area">
+            <h4>演示区域：</h4>
+            <textarea class="phonetics-input phonetics-textarea" id="demo2-input" 
+                placeholder="在这里输入英文文本，然后点击处理按钮...">
+The quick brown fox jumps over the lazy dog. This is a sample sentence for testing phonetics.</textarea>
+            <div class="phonetics-controls">
+                <button class="phonetics-btn phonetics-btn-primary" onclick="demo2.processText()">处理文本</button>
+                <button class="phonetics-btn" onclick="demo2.clear()">清空</button>
+                <label class="phonetics-toggle">
+                    <input type="checkbox" onchange="demo2.togglePhonetics(this.checked)" checked>
+                    <span class="phonetics-toggle-slider"></span>
+                </label>
+                <span>显示音标</span>
+            </div>
+            <div id="demo2-container" class="phonetics-container">
+                <div class="phonetics-display" id="demo2-display">
+                    <!-- 处理后的文本将在这里显示 -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- API 文档 -->
+    <div class="example-section">
+        <h2 class="example-title">3. API 文档</h2>
+        
+        <h3>PhoneticsCore 类</h3>
+        <ul class="feature-list">
+            <li><strong>getPhonetic(word, accent)</strong> - 获取单词的音标</li>
+            <li><strong>tokenize(text)</strong> - 将文本分词</li>
+            <li><strong>setAccent(accent)</strong> - 设置口音（'us' 或 'uk'）</li>
+            <li><strong>addCustomDict(dict)</strong> - 添加自定义字典</li>
+            <li><strong>loadDict()</strong> - 加载字典</li>
+            <li><strong>saveDict()</strong> - 保存字典</li>
+        </ul>
+
+        <h3>PhoneticsUI 类</h3>
+        <ul class="feature-list">
+            <li><strong>setText(text)</strong> - 设置要显示的文本</li>
+            <li><strong>showPhonetics()</strong> - 显示音标</li>
+            <li><strong>hidePhonetics()</strong> - 隐藏音标</li>
+            <li><strong>togglePhonetics()</strong> - 切换音标显示状态</li>
+            <li><strong>setAccent(accent)</strong> - 设置口音</li>
+            <li><strong>render()</strong> - 重新渲染显示</li>
+            <li><strong>on(event, callback)</strong> - 监听事件</li>
+            <li><strong>off(event, callback)</strong> - 移除事件监听</li>
+        </ul>
+
+        <h3>支持的事件</h3>
+        <ul class="feature-list">
+            <li><strong>wordClick</strong> - 单词被点击时触发</li>
+            <li><strong>accentChange</strong> - 口音切换时触发</li>
+            <li><strong>phoneticsToggle</strong> - 音标显示状态切换时触发</li>
+            <li><strong>textChange</strong> - 文本内容改变时触发</li>
+        </ul>
+    </div>
+
+    <!-- 样式自定义 -->
+    <div class="example-section">
+        <h2 class="example-title">4. 样式自定义</h2>
+        <p>你可以通过CSS变量来自定义音标模块的外观：</p>
+        
+        <div class="code-block">
+            <code>
+:root {
+    --phonetics-primary-color: #007bff;     /* 主色调 */
+    --phonetics-secondary-color: #6c757d;   /* 次要色调 */
+    --phonetics-font-family: 'Arial';       /* 字体 */
+    --phonetics-font-size-base: 16px;       /* 基础字体大小 */
+    --phonetics-border-radius: 6px;         /* 圆角大小 */
+    --phonetics-spacing-md: 20px;           /* 间距 */
+}
+
+/* 自定义音标样式 */
+.phonetics-ipa {
+    color: #e74c3c;
+    font-weight: bold;
+}
+
+/* 自定义单词悬停效果 */
+.phonetics-token:hover {
+    background-color: #fff3cd;
+    transform: scale(1.05);
+}
+            </code>
+        </div>
+    </div>
+
+    <!-- 集成指南 -->
+    <div class="example-section">
+        <h2 class="example-title">5. 集成到现有项目</h2>
+        
+        <h3>步骤 1: 复制文件</h3>
+        <p>将以下文件复制到你的项目中：</p>
+        <ul>
+            <li><code>phonetics-core.js</code> - 核心功能</li>
+            <li><code>phonetics-ui.js</code> - UI交互</li>
+            <li><code>phonetics-data.js</code> - 音标字典</li>
+            <li><code>phonetics.css</code> - 样式文件</li>
+        </ul>
+
+        <h3>步骤 2: 引入文件</h3>
+        <div class="code-block">
+            <code>
+&lt;!-- 在HTML头部引入CSS --&gt;
+&lt;link rel="stylesheet" href="path/to/phonetics.css"&gt;
+
+&lt;!-- 在页面底部引入JS文件 --&gt;
+&lt;script src="path/to/phonetics-data.js"&gt;&lt;/script&gt;
+&lt;script src="path/to/phonetics-core.js"&gt;&lt;/script&gt;
+&lt;script src="path/to/phonetics-ui.js"&gt;&lt;/script&gt;
+            </code>
+        </div>
+
+        <h3>步骤 3: 初始化</h3>
+        <div class="code-block">
+            <code>
+// 等待页面加载完成
+document.addEventListener('DOMContentLoaded', function() {
+    // 创建音标实例
+    const phonetics = createPhoneticsCore();
+    const ui = createPhoneticsUI('your-container-id', phonetics);
+    
+    // 设置文本
+    ui.setText('Your English text here');
+    ui.showPhonetics();
+});
+            </code>
+        </div>
+    </div>
+
+    <!-- JavaScript 代码 -->
+    <script src="phonetics-data.js"></script>
+    <script src="phonetics-core.js"></script>
+    <script src="phonetics-ui.js"></script>
+    <script>
+        // 示例1：基础使用
+        const demo1 = {
+            phonetics: null,
+            ui: null,
+            
+            init() {
+                this.phonetics = createPhoneticsCore();
+                this.ui = createPhoneticsUI('demo1-display', this.phonetics);
+                this.ui.setText('Hello world! This is a phonetics demo.');
+                this.ui.showPhonetics();
+            },
+            
+            showPhonetics() {
+                this.ui.showPhonetics();
+            },
+            
+            hidePhonetics() {
+                this.ui.hidePhonetics();
+            },
+            
+            setAccent(accent) {
+                this.ui.setAccent(accent);
+                // 更新按钮状态
+                document.querySelectorAll('#demo1-container .phonetics-accent-btn').forEach(btn => {
+                    btn.classList.remove('active');
+                });
+                event.target.classList.add('active');
+            }
+        };
+
+        // 示例2：高级功能
+        const demo2 = {
+            phonetics: null,
+            ui: null,
+            
+            init() {
+                this.phonetics = createPhoneticsCore({
+                    accent: 'us'
+                });
+                this.ui = createPhoneticsUI('demo2-display', this.phonetics);
+                
+                // 监听事件
+                this.ui.on('wordClick', (word, phonetic) => {
+                    console.log(`点击了单词: ${word}, 音标: ${phonetic}`);
+                    alert(`单词: ${word}\n音标: /${phonetic}/`);
+                });
+            },
+            
+            processText() {
+                const text = document.getElementById('demo2-input').value;
+                if (text.trim()) {
+                    this.ui.setText(text);
+                    this.ui.render();
+                }
+            },
+            
+            clear() {
+                document.getElementById('demo2-input').value = '';
+                this.ui.setText('');
+                this.ui.render();
+            },
+            
+            togglePhonetics(show) {
+                if (show) {
+                    this.ui.showPhonetics();
+                } else {
+                    this.ui.hidePhonetics();
+                }
+            }
+        };
+
+        // 页面加载完成后初始化示例
+        document.addEventListener('DOMContentLoaded', function() {
+            demo1.init();
+            demo2.init();
+        });
+    </script>
+</body>
+</html>

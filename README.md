@@ -1,22 +1,26 @@
-# AI Pronunciation Coach
+# 🎯 AI Pronunciation Coach
 
-一个基于AI的英语发音教练应用，提供智能文本分析、发音练习和实时反馈功能。
+一个基于AI的英语发音教练应用，提供智能文本分析、发音练习和实时反馈功能。采用现代化架构设计，确保安全性和用户体验。
 
-## 功能特点
+## ✨ 功能特点
 
-- 🎯 智能文本分析和意群划分
-- 🔊 英美音切换和语音合成
-- 🎤 实时语音识别和发音评分
-- ✨ 粒子特效和动画反馈
-- 📱 响应式设计，支持多设备
+- 🔊 **高质量语音合成** - Azure TTS提供英美音切换
+- 🎤 **实时语音识别** - Web Speech API支持的发音评分
+- 🛡️ **安全架构** - API密钥保护和请求频率限制
+- 🎨 **现代UI设计** - 粒子特效和流畅动画
+- 📱 **响应式布局** - 完美适配各种设备
+- 🔒 **声音白名单** - 仅允许预设的英美音选项
 
-## 技术栈
+## 🛠️ 技术栈
 
-- **前端**: React 18 + Vite
-- **UI库**: Framer Motion + Lucide React
-- **AI服务**: Google Gemini API
-- **语音**: Web Speech API
-- **部署**: Netlify + Netlify Functions
+- **前端框架**: React 18 + Vite
+- **UI组件**: Framer Motion + Lucide React
+- **AI服务**: Google Gemini API (文本分析,本项目未启用)
+- **语音合成**: Azure Text-to-Speech
+- **语音识别**: Web Speech API
+- **后端代理**: Netlify Functions
+- **部署平台**: Netlify + GitHub
+- **安全特性**: 环境变量 + 请求限制
 
 ## 本地开发
 
@@ -39,8 +43,10 @@ npm install
 # 复制环境变量模板
 cp .env.example .env.local
 
-# 编辑 .env.local 文件，添加你的Google API密钥
+# 编辑 .env.local 文件，添加必要的API密钥
 GOOGLE_API_KEY=your_google_gemini_api_key_here
+AZURE_SPEECH_KEY=your_azure_speech_service_key
+AZURE_SPEECH_REGION=your_azure_service_region
 ```
 
 ### 4. 启动开发服务器
@@ -70,9 +76,11 @@ npm run dev
 
 3. **配置环境变量**
    - 在Netlify控制台中，进入 Site settings > Environment variables
-   - 添加环境变量：
+   - 添加以下环境变量：
      ```
      GOOGLE_API_KEY = your_google_gemini_api_key_here
+     AZURE_SPEECH_KEY = your_azure_speech_service_key
+     AZURE_SPEECH_REGION = your_azure_service_region
      ```
 
 4. **部署**
@@ -94,33 +102,50 @@ npm run dev
      netlify deploy --prod --dir=dist
      ```
 
-## 获取Google Gemini API密钥
+## 🔑 API密钥配置
+
+### Google Gemini API密钥
 
 1. 访问 [Google AI Studio](https://makersuite.google.com/app/apikey)
 2. 登录你的Google账户
 3. 点击 "Create API Key"
 4. 复制生成的API密钥
-5. 将密钥添加到环境变量中
 
-## 项目结构
+### Azure Speech Service密钥
+
+1. 访问 [Azure Portal](https://portal.azure.com)
+2. 创建 "Speech Services" 资源
+3. 在资源页面获取：
+   - **密钥**: 在 "Keys and Endpoint" 页面复制 Key1 或 Key2
+   - **区域**: 记录资源的区域代码（如 `eastus`, `westus2`）
+4. 将密钥和区域添加到环境变量中
+
+## 📁 项目结构
 
 ```
 ├── netlify/
 │   └── functions/
-│       └── analyze.js          # Netlify函数（API代理）
+│       ├── analyze.js          # AI文本分析API代理
+│       └── tts.js             # Azure TTS语音合成代理
 ├── src/
 │   ├── components/
-│   │   ├── Header.jsx          # 头部组件
+│   │   ├── Header.jsx          # 头部导航组件
 │   │   ├── InputView.jsx       # 文本输入界面
-│   │   ├── PracticeView.jsx    # 练习界面
-│   │   └── ...
+│   │   ├── PracticeView.jsx    # 发音练习界面
+│   │   └── ...                # 其他UI组件
+│   ├── config/
+│   │   └── voiceConfig.js      # 声音选择白名单配置
 │   ├── services/
 │   │   ├── aiService.js        # AI分析服务
-│   │   └── speechService.js    # 语音服务
+│   │   ├── azureTtsService.js  # Azure TTS服务
+│   │   ├── speechService.js    # 语音识别服务
+│   │   └── ...                # 其他服务模块
 │   └── ...
-├── netlify.toml                # Netlify配置
+├── netlify.toml                # Netlify部署配置
 ├── .env.example               # 环境变量模板
-└── package.json
+├── .gitignore                 # Git忽略文件配置
+├── DEPLOYMENT.md              # 详细部署指南
+└── package.json               # 项目依赖配置
 ```
 
 ## 环境变量说明
@@ -150,6 +175,25 @@ npm run dev
 
 欢迎提交Issue和Pull Request！
 
-## 许可证
+## 🛡️ 安全特性
+
+- **API密钥保护**: 所有敏感密钥通过Netlify Functions代理，前端无法直接访问
+- **声音白名单**: 仅允许预设的英美音选项，防止恶意语音注入
+- **请求频率限制**: 防止API滥用和过度调用
+- **内容大小限制**: 限制输入文本长度，避免资源浪费
+- **环境变量隔离**: 开发和生产环境完全分离
+
+## ⚠️ 注意事项
+
+1. **API密钥安全**: 请妥善保管你的API密钥，不要在代码中硬编码
+2. **成本控制**: Azure TTS和Google Gemini都是付费服务，请注意使用量
+3. **浏览器兼容性**: 语音识别功能需要现代浏览器支持
+4. **网络要求**: 应用需要稳定的网络连接以访问AI服务
+
+## 🤝 贡献
+
+欢迎提交Issue和Pull Request来改进这个项目！
+
+## 📄 许可证
 
 MIT License

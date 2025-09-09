@@ -5,6 +5,7 @@ import InputView from './components/InputView'
 import PracticeView from './components/PracticeView'
 import FloatingActions from './components/FloatingActions'
 import LoadingSpinner from './components/LoadingSpinner'
+// import ESpeakTest from './components/ESpeakTest' // 已移除测试组件
 import { analyzeText } from './services/aiService'
 import './App.css'
 

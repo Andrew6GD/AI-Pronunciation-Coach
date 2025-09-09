@@ -23,6 +23,8 @@
   gap: 1rem;
   cursor: pointer;
   transition: all var(--transition-fast);
+  position: relative;
+  z-index: 100;
 }
 
 .logo-icon {
@@ -40,7 +42,7 @@
   width: 64px;
   height: 64px;
   color: var(--primary-color);
-  z-index: 2;
+  z-index: 100;
 }
 
 .mic-icon {
