@@ -1,6 +1,6 @@
 /* 咖啡弹窗模态框样式 */
 .coffee-modal {
-  width: min(88vw, 480px);
+  width: min(90vw, 580px);
   padding: 20px;
   border-radius: 16px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
