@@ -803,7 +803,7 @@ const InputView = ({ onAnalyze, isLoading, error, onClearError }) => {
             
             {/* 顶端拖拽把手 */}
             <g id="handle" className="handle" role="button" aria-label="拉起天线调节分析档位">
-              <circle id="tip" cx="0" cy="0" r="16" fill="url(#metalTip)"/>
+              <circle id="tip" cx="0" cy="0" r="22" fill="url(#metalTip)"/>
               <circle id="tipPulse" cx="0" cy="0" r="22" fill="#6366f1" opacity="0"/>
               <circle id="hit" cx="0" cy="0" r="36" fill="transparent"/>
             </g>
