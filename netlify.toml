@@ -22,6 +22,9 @@
 # 环境变量（在Netlify控制台中设置）
 # AZURE_SPEECH_KEY = "your-azure-speech-key"
 # AZURE_SPEECH_REGION = "eastus"
+# VITE_EMAILJS_SERVICE_ID = "your-emailjs-service-id"
+# VITE_EMAILJS_TEMPLATE_ID = "your-emailjs-template-id"
+# VITE_EMAILJS_PUBLIC_KEY = "your-emailjs-public-key"
 
 # 头部设置
 [[headers]]
@@ -32,13 +35,6 @@
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
     Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self' /.netlify/functions/*;"
-
-# 环境变量（在Netlify控制台中设置）
-# AZURE_SPEECH_KEY = "your-azure-speech-key"
-# AZURE_SPEECH_REGION = "eastus"
-# VITE_EMAILJS_SERVICE_ID = "your-emailjs-service-id"
-# VITE_EMAILJS_TEMPLATE_ID = "your-emailjs-template-id"
-# VITE_EMAILJS_PUBLIC_KEY = "your-emailjs-public-key"
 
 # API函数的CORS设置
 [[headers]]
